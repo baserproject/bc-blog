@@ -17,9 +17,9 @@ use CakephpFixtureFactories\Factory\BaseFactory as CakephpBaseFactory;
 use Faker\Generator;
 
 /**
- * BlogTagFactory
+ * BlogPostBlogTagFactory
  */
-class BlogTagFactory extends CakephpBaseFactory
+class BlogPostBlogTagFactory extends CakephpBaseFactory
 {
 
     /**
@@ -29,7 +29,7 @@ class BlogTagFactory extends CakephpBaseFactory
      */
     protected function getRootTableRegistryName(): string
     {
-        return 'BcBlog.BlogTags';
+        return 'BcBlog.BlogPostsBlogTags';
     }
 
     /**
@@ -44,5 +44,4 @@ class BlogTagFactory extends CakephpBaseFactory
             return [];
         });
     }
-
 }

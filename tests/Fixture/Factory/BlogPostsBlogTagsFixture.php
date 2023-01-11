@@ -9,15 +9,11 @@
  * @license       https://basercms.net/license/index.html MIT License
  */
 
-namespace BcBlog\Service;
-use BaserCore\Annotation\NoTodo;
-use BaserCore\Annotation\Checked;
-use BaserCore\Annotation\UnitTest;
+namespace BcBlog\Test\Fixture\Factory;
+
+use Cake\TestSuite\Fixture\TestFixture;
 
 /**
- * BlogCommentsServiceInterface
+ * Class BlogPostsBlogTagsFixture
  */
-interface BlogCommentsServiceInterface
-{
-
-}
+class BlogPostsBlogTagsFixture extends TestFixture {}
