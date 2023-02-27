@@ -57,6 +57,7 @@ class BlogFrontServiceTest extends BcTestCase
         'plugin.BaserCore.Factory/UsersUserGroups',
         'plugin.BaserCore.Factory/UserGroups',
         'plugin.BaserCore.Factory/Contents',
+        'plugin.BaserCore.Factory/ContentFolders',
         'plugin.BcBlog.Factory/BlogContents',
         'plugin.BcBlog.Factory/BlogTags',
         'plugin.BcBlog.Factory/BlogPosts',
@@ -181,6 +182,7 @@ class BlogFrontServiceTest extends BcTestCase
      */
     public function test_getIndexTemplate()
     {
+        ContentFactory::make(['entity_id' => 1, 'plugin' => 'BcBlog', 'type' => 'BlogContent'])->persist();
         BlogContentFactory::make([
             'id' => 1,
             'template' => 'template-1'
@@ -211,6 +213,7 @@ class BlogFrontServiceTest extends BcTestCase
         // サービスクラス
         $BlogContentsService = $this->getService(BlogContentsServiceInterface::class);
         // データ生成
+        ContentFactory::make(['entity_id' => 1, 'plugin' => 'BcBlog', 'type' => 'BlogContent'])->persist();
         BlogContentFactory::make(['id' => 1, 'template' => 'template-1'])->persist();
         // ブログコンテンツの設定に依存するメソードをコール
         $rs = $this->BlogFrontService->getArchivesTemplate($BlogContentsService->get(1));
@@ -434,6 +437,7 @@ class BlogFrontServiceTest extends BcTestCase
      */
     public function test_getViewVarsForArchivesByAuthor()
     {
+        $this->getRequest('/baser/admin');
         // サービスクラス
         $blogPostsService = $this->getService(BlogPostsServiceInterface::class);
         $blogContentsService = $this->getService(BlogContentsServiceInterface::class);

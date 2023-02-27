@@ -73,11 +73,17 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @return EntityInterface
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function get(int $id, array $options = [])
     {
         $options = array_merge([
-            'status' => ''
+            'status' => '',
+            'contain' => [
+                'BlogContents' => ['Contents' => ['Sites']],
+                'BlogCategories',
+                'BlogTags'
+            ]
         ], $options);
         $conditions = [];
         if ($options['status'] === 'publish') {
@@ -85,10 +91,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         }
         return $this->BlogPosts->get($id, [
             'conditions' => $conditions,
-            'contain' => [
-                'BlogContents' => ['Contents' => ['Sites']],
-                'BlogCategories',
-                'BlogTags']]);
+            'contain' => $options['contain']]);
     }
 
     /**
@@ -109,22 +112,23 @@ class BlogPostsService implements BlogPostsServiceInterface
             'order' => 'posted',    // 並び順対象のフィールド
             'sort' => null,
             'id' => null,
-            'no' => null
+            'no' => null,
+            'contentUrl' => null,
+            'contain' => [
+                'Users',
+                'BlogCategories',
+                'BlogContents',
+                'BlogComments',
+                'BlogTags',
+            ]
         ], $queryParams);
 
         if (!empty($options['num'])) $options['limit'] = $options['num'];
         if (!empty($options['sort'])) $options['order'] = $options['sort'];
         unset($options['num'], $options['sort']);
 
-        $contain = [
-            'Users',
-            'BlogCategories',
-            'BlogContents',
-            'BlogComments',
-            'BlogTags'
-        ];
-        if ($options['id'] || $options['no']) $contain[] = 'BlogComments';
-        $query = $this->BlogPosts->find()->contain($contain);
+        if ($options['id'] || $options['no']) $options['contain'][] = 'BlogComments';
+        $query = $this->BlogPosts->find()->contain($options['contain']);
 
         if ($options['order']) {
             $query->order($this->createOrder($options['order'], $options['direction']));
@@ -244,7 +248,15 @@ class BlogPostsService implements BlogPostsServiceInterface
         // サイトID
         if (!is_null($params['site_id'])) $conditions['Contents.site_id'] = $params['site_id'];
         // URL
-        if ($params['contentUrl']) $conditions['Contents.url'] = $params['contentUrl'];
+        if ($params['contentUrl']) {
+            $query->contain(['BlogContents' => ['Contents']]);
+            if(is_array($params['contentUrl'])) {
+                $conditions['Contents.url IN'] = $params['contentUrl'];
+            } else {
+                $conditions['Contents.url'] = $params['contentUrl'];
+            }
+        }
+        // タグ
         if (!is_null($params['blog_tag_id'])) {
             $query->matching('BlogTags', function($q) use ($params) {
                 return $q->where(['BlogTags.id' => $params['blog_tag_id']]);
@@ -399,7 +411,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         }
         foreach($keywords as $key => $value) {
             $value = h(rawurldecode($value));
-            $conditions['and'][$key]['or'][] = ['BlogPosts.name LIKE' => "%{$value}%"];
+            $conditions['and'][$key]['or'][] = ['BlogPosts.title LIKE' => "%{$value}%"];
             $conditions['and'][$key]['or'][] = ['BlogPosts.content LIKE' => "%{$value}%"];
             $conditions['and'][$key]['or'][] = ['BlogPosts.detail LIKE' => "%{$value}%"];
         }
@@ -602,6 +614,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @return EntityInterface|false
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function publish(int $id)
     {
@@ -622,6 +635,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @return EntityInterface|false
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function unpublish(int $id)
     {
@@ -669,6 +683,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @return array
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getTitlesById(array $ids): array
     {
@@ -707,6 +722,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @return Query
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getIndexByCategory($category, array $options = [])
     {
@@ -738,6 +754,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @return Query
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getIndexByTag(string $tag, array $options = [])
     {
@@ -755,6 +772,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @return Query
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getIndexByDate(string $year, string $month, string $day, array $options = [])
     {

@@ -11,8 +11,9 @@
 
 namespace BcBlog\Test\TestCase\Service;
 
-use BaserCore\Test\Factory\UserFactory;
 use BaserCore\Test\Factory\ContentFactory;
+use BaserCore\Test\Factory\SiteFactory;
+use BaserCore\Test\Factory\UserFactory;
 use BaserCore\TestSuite\BcTestCase;
 use BaserCore\Utility\BcContainerTrait;
 use BcBlog\Model\Table\BlogPostsTable;
@@ -25,6 +26,7 @@ use BcBlog\Test\Factory\BlogPostFactory;
 use BcBlog\Test\Factory\BlogTagFactory;
 use BcBlog\Test\Scenario\MultiSiteBlogScenario;
 use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\ORM\TableRegistry;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
 use Cake\I18n\FrozenTime;
 
@@ -51,9 +53,10 @@ class BlogPostsServiceTest extends BcTestCase
         'plugin.BaserCore.Factory/UsersUserGroups',
         'plugin.BaserCore.Factory/UserGroups',
         'plugin.BcBlog.Factory/BlogPosts',
-        'plugin.BcBlog.Factory/BlogContents',
-        'plugin.BaserCore.Factory/Contents',
         'plugin.BcBlog.Factory/BlogTags',
+        'plugin.BaserCore.Factory/Contents',
+        'plugin.BaserCore.Factory/ContentFolders',
+        'plugin.BcBlog.Factory/BlogContents',
         'plugin.BcBlog.Factory/BlogCategories',
         'plugin.BcBlog.Factory/BlogPostsBlogTags',
     ];
@@ -101,7 +104,41 @@ class BlogPostsServiceTest extends BcTestCase
      */
     public function testGet()
     {
-        $this->markTestIncomplete('このテストは、まだ実装されていません。');
+        // データを生成
+        BlogPostFactory::make(['id' => 1, 'blog_content_id' => 1, 'blog_category_id' => 1, 'status' => true])->persist();
+
+        ContentFactory::make(['id' => 1, 'site_id' => 1, 'type' => 'BlogContent', 'entity_id' => 1, 'title' => 'content title'])->persist();
+        SiteFactory::make(['id' => 1, 'name' => 'site name'])->persist();
+        BlogContentFactory::make(['id' => 1, 'description' => 'baser blog description', 'tag_use' => true])->persist();
+        BlogCategoryFactory::make(['id' => 1, 'blog_content_id' => 1, 'name' => 'category name'])->persist();
+
+        BlogTagFactory::make(['id' => 1])->persist();
+        BlogTagFactory::make(['id' => 2])->persist();
+        BlogPostBlogTagFactory::make(['blog_post_id' => 1, 'blog_tag_id' => 1])->persist();
+        BlogPostBlogTagFactory::make(['blog_post_id' => 1, 'blog_tag_id' => 2])->persist();
+
+        // サービスメソッドを呼ぶ
+        // option status publish 公開状態にある
+        $result = $this->BlogPostsService->get(1, ['status' => 'publish']);
+        // 戻り値を確認
+        $this->assertTrue($result->status);
+        //BlogCategoryを取得できるか確認
+        $this->assertEquals('category name', $result->blog_category->name);
+        //blogTagsを取得できるか確認
+        $this->assertCount(2, $result->blog_tags);
+        //BlogContentを取得できるか確認
+        $this->assertEquals('baser blog description', $result->blog_content->description);
+        //BlogContentのコンテンツを取得できるか確認
+        $this->assertEquals('content title', $result->blog_content->content->title);
+        //BlogPostのサイトを取得できるか確認
+        $this->assertEquals('site name', $result->blog_content->content->site->name);
+
+        //BlogPostが非公開にする
+        $this->BlogPostsService->unpublish(1);
+        // 例外を表示
+        $this->expectException('Cake\Datasource\Exception\RecordNotFoundException');
+        // $options の status を publish として、レコードの status が true でないデータを指定す
+        $this->BlogPostsService->get(1, ['status' => 'publish']);
     }
 
     /**
@@ -351,17 +388,17 @@ class BlogPostsServiceTest extends BcTestCase
     {
         $result = $this->BlogPostsService->createKeywordCondition([], "hello");
         //戻り値を確認
-        $this->assertEquals("%hello%", $result['and'][0]['or'][0]['BlogPosts.name LIKE']);
+        $this->assertEquals("%hello%", $result['and'][0]['or'][0]['BlogPosts.title LIKE']);
         $this->assertEquals("%hello%", $result['and'][0]['or'][1]['BlogPosts.content LIKE']);
         $this->assertEquals("%hello%", $result['and'][0]['or'][2]['BlogPosts.detail LIKE']);
 
         //スペースを含むテストデータ
         $result = $this->BlogPostsService->createKeywordCondition([], "hello world");
         //戻り値を確認
-        $this->assertEquals("%hello%", $result['and'][0]['or'][0]['BlogPosts.name LIKE']);
+        $this->assertEquals("%hello%", $result['and'][0]['or'][0]['BlogPosts.title LIKE']);
         $this->assertEquals("%hello%", $result['and'][0]['or'][1]['BlogPosts.content LIKE']);
         $this->assertEquals("%hello%", $result['and'][0]['or'][2]['BlogPosts.detail LIKE']);
-        $this->assertEquals("%world%", $result['and'][1]['or'][0]['BlogPosts.name LIKE']);
+        $this->assertEquals("%world%", $result['and'][1]['or'][0]['BlogPosts.title LIKE']);
         $this->assertEquals("%world%", $result['and'][1]['or'][1]['BlogPosts.content LIKE']);
         $this->assertEquals("%world%", $result['and'][1]['or'][2]['BlogPosts.detail LIKE']);
     }
@@ -479,7 +516,7 @@ class BlogPostsServiceTest extends BcTestCase
                 false,
                 $blogPost->find('all'),
                 ['contentUrl' => '/test'],
-                $blogPost->find('all')->where(['Contents.url' => '/test'])
+                $blogPost->find('all')->contain(['BlogContents' => ['Contents']])->where(['Contents.url' => '/test'])
             ],
             //$params カテゴリID
             [
@@ -520,7 +557,7 @@ class BlogPostsServiceTest extends BcTestCase
                 ['no' => 1, 'force' => true],
                 $blogPost->find('all')->where(['BlogPosts.no' => 1])
             ],
-            //$params キーワード
+            // $params キーワード
             [
                 false,
                 $blogPost->find('all'),
@@ -529,7 +566,7 @@ class BlogPostsServiceTest extends BcTestCase
                     'and' => [
                         0 => [
                             'or' => [
-                                ['BlogPosts.name LIKE' => '%test%'],
+                                ['BlogPosts.title LIKE' => '%test%'],
                                 ['BlogPosts.content LIKE' => '%test%'],
                                 ['BlogPosts.detail LIKE' => '%test%']
                             ]
@@ -772,7 +809,18 @@ class BlogPostsServiceTest extends BcTestCase
      */
     public function testPublish()
     {
-        $this->markTestIncomplete('このテストは、まだ実装されていません。');
+        // データを生成
+        // データを作成する
+        ContentFactory::make(['entity_id' => 1, 'plugin' => 'BcBlog', 'type' => 'BlogContent'])->persist();
+        BlogContentFactory::make(['id' => 1])->persist();
+        BlogPostFactory::make([])->unpublish(1, 1)->persist();
+
+        // サービスメソッドを呼ぶ
+        $entity = $this->BlogPostsService->publish(1);
+        //戻る値を確認
+        $this->assertTrue($entity->status);
+        $this->assertNull($entity->publish_begin);
+        $this->assertNull($entity->publish_end);
     }
 
     /**
@@ -780,7 +828,18 @@ class BlogPostsServiceTest extends BcTestCase
      */
     public function testUnpublish()
     {
-        $this->markTestIncomplete('このテストは、まだ実装されていません。');
+        // データを生成
+        ContentFactory::make(['entity_id' => 1, 'plugin' => 'BcBlog', 'type' => 'BlogContent'])->persist();
+        BlogContentFactory::make(['id' => 1])->persist();
+        BlogPostFactory::make([])->publish(1, 1)->persist();
+
+        // サービスメソッドを呼ぶ
+        $entity = $this->BlogPostsService->unpublish(1);
+
+        // 戻る値を確認
+        $this->assertFalse($entity->status);
+        $this->assertNull($entity->publish_begin);
+        $this->assertNull($entity->publish_end);
     }
 
     /**
@@ -814,7 +873,30 @@ class BlogPostsServiceTest extends BcTestCase
      */
     public function testGetTitlesById()
     {
-        $this->markTestIncomplete('このテストは、まだ実装されていません。');
+        //データ生成
+        BlogPostFactory::make([
+            'id' => 1,
+            'title' => 'post title 1'
+        ])->persist();
+        BlogPostFactory::make([
+            'id' => 2,
+            'title' => 'post title 2'
+        ])->persist();
+
+        $result = $this->BlogPostsService->getTitlesById([1, 2]);
+        //戻り値を確認
+        $this->assertEquals(
+            [
+                1 => 'post title 1',
+                2 => 'post title 2'
+            ],
+            $result
+        );
+
+        //存在しないIDを確認する場合、
+        $result = $this->BlogPostsService->getTitlesById([3]);
+        //結果はnullに戻る
+        $this->assertEmpty($result);
     }
 
     /**
@@ -856,7 +938,19 @@ class BlogPostsServiceTest extends BcTestCase
      */
     public function testGetIndexByCategory()
     {
-        $this->markTestIncomplete('このテストは、まだ実装されていません。');
+        // データを生成
+        $this->loadFixtureScenario(MultiSiteBlogScenario::class);
+        BlogPostFactory::make(['id' => 1, 'blog_category_id' => 1])->persist();
+        BlogPostFactory::make(['id' => 2, 'blog_category_id' => 1])->persist();
+        BlogPostFactory::make(['id' => 3, 'blog_category_id' => 3])->persist();
+        // サービスメソッドを呼ぶ
+        // カテゴリreleaseの記事を取得、id昇順
+        $result = $this->BlogPostsService->getIndexByCategory('release', [
+            'force' => true,
+        ]);
+        // 戻り値を確認
+        // 指定した　カテゴリ で記事を取得できているか
+        $this->assertCount(2, $result);
     }
 
     /**
@@ -907,7 +1001,30 @@ class BlogPostsServiceTest extends BcTestCase
      */
     public function testGetIndexByTag()
     {
-        $this->markTestIncomplete('このテストは、まだ実装されていません。');
+        // データを生成
+        BlogPostFactory::make([])->publish(1,1)->persist();
+        BlogPostFactory::make([])->publish(2,1)->persist();
+
+        BlogTagFactory::make(['id' => 1, 'name' => 'test tag1'])->persist();
+
+        BlogPostBlogTagFactory::make(['blog_post_id' => 1, 'blog_tag_id' => 1])->persist();
+        BlogPostBlogTagFactory::make(['blog_post_id' => 2, 'blog_tag_id' => 2])->persist();
+
+        // サービスメソッドを呼ぶ
+        // test tag1 の記事を取得、id昇順
+        $result = $this->BlogPostsService->getIndexByTag('test tag1', []);
+
+        // 戻り値を確認
+        // 指定した　tag で記事を取得できているか
+        $this->assertCount(1, $result);
+
+        // サービスメソッドを呼ぶ
+        // 記事が存在しない
+        $result = $this->BlogPostsService->getIndexByTag('test tag0', []);
+
+        // 戻り値を確認
+        // 指定した tag の記事が存在しない
+        $this->assertCount(0, $result);
     }
 
     /**
@@ -915,7 +1032,30 @@ class BlogPostsServiceTest extends BcTestCase
      */
     public function testGetIndexByDate()
     {
-        $this->markTestIncomplete('このテストは、まだ実装されていません。');
+        // データを生成
+        BlogPostFactory::make([])->byPosted(1, '2022-12-01 00:00:00')->persist();
+        BlogPostFactory::make([])->byPosted(2, '2022-12-02 00:00:00')->persist();
+        BlogPostFactory::make([])->byPosted(3, '2022-11-02 00:00:00')->persist();
+
+        // サービスメソッドを呼ぶ
+        $result = $this->BlogPostsService->getIndexByDate('2022', '12', '01', []);
+        // 戻り値を確認
+        $this->assertCount(1, $result->toArray());
+
+        // 年と月の値を入れる
+        $result = $this->BlogPostsService->getIndexByDate('2022', '12', '', []);
+        // 戻り値を確認);
+        $this->assertCount(2, $result->toArray());
+
+        // 年だけを入れる
+        $result = $this->BlogPostsService->getIndexByDate('2022', '', '', []);
+        // 戻り値を確認);
+        $this->assertCount(3, $result->toArray());
+
+        // 年月日が指定されていない場合は例外とする
+        $this->expectException(\Cake\Http\Exception\NotFoundException::class);
+        // サービスメソッドを呼ぶ
+        $this->BlogPostsService->getIndexByDate('', '', '', []);
     }
 
     /**

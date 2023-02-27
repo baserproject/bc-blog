@@ -87,7 +87,8 @@ class BlogContentsService implements BlogContentsServiceInterface
     public function get(int $id, $options = [])
     {
         $options = array_merge([
-            'status' => ''
+            'status' => '',
+            'contain' => ['Contents' => ['Sites']]
         ], $options);
         $conditions = ['BlogContents.id' => $id];
         if ($options['status'] === 'publish') {
@@ -95,7 +96,7 @@ class BlogContentsService implements BlogContentsServiceInterface
         }
         return $this->BlogContents->get($id, [
             'conditions' => $conditions,
-            'contain' => ['Contents' => ['Sites']]
+            'contain' => $options['contain']
         ]);
     }
 
@@ -205,7 +206,7 @@ class BlogContentsService implements BlogContentsServiceInterface
      */
     public function delete(int $id): bool
     {
-        $blogContent = $this->get($id);
+        $blogContent = $this->get($id, ['contain' => []]);
         return $this->BlogContents->delete($blogContent);
     }
 
@@ -255,6 +256,32 @@ class BlogContentsService implements BlogContentsServiceInterface
         } else {
             return false;
         }
+    }
+
+    /**
+     * コンテンツテンプレートの相対パスを取得する
+     *
+     * @param array $options
+     * @return string
+     */
+    public function getContentsTemplateRelativePath(array $options): string
+    {
+        $options = array_merge([
+            'template' => 'posts',
+            'contentsTemplate' => 'default',
+            'contentUrl' => ''
+        ], $options);
+
+        if (!$options['contentsTemplate']) {
+            $conditions = array_merge(
+                ['Content.url' => $options['contentUrl']],
+                $this->BlogContents->getConditionAllowPublish()
+            );
+            $blogContent = $this->BlogContents->find()->where($conditions)->first();
+            if ($blogContent) $options['contentsTemplate'] = $blogContent->template;
+        }
+
+        return 'BcBlog...' . DS . 'Blog' . DS . $options['contentsTemplate'] . DS . $options['template'];
     }
 
 }

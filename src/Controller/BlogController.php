@@ -43,7 +43,9 @@ class BlogController extends BlogFrontAppController
     public function initialize(): void
     {
         parent::initialize();
-        $this->loadComponent('BaserCore.BcFrontContents', ['isContentsPage' => false]);
+        if($this->getRequest()->getParam('action') !== 'index') {
+            $this->loadComponent('BaserCore.BcFrontContents', ['viewContentCrumb' => true]);
+        }
     }
 
     /**
@@ -153,14 +155,17 @@ class BlogController extends BlogFrontAppController
 //            $template = 'index';
         }
 
+        $blogContentId = (int)$this->getRequest()->getAttribute('currentContent')->entity_id;
+
         /* @var BlogContent $blogContent */
         $blogContent = $blogContentsService->get(
-            (int)$this->getRequest()->getAttribute('currentContent')->entity_id,
+            $blogContentId,
             ['status' => 'publish']
         );
 
         try {
             $entities = $this->paginate($blogPostsService->getIndex([
+                'blog_content_id' => $blogContentId,
                 'limit' => $blogContent->list_count,
                 'status' => 'publish'
             ]));
@@ -178,10 +183,10 @@ class BlogController extends BlogFrontAppController
 
     /**
      * [PUBLIC] ブログアーカイブを表示する
-     * 
+     *
      * $type として、category / author / tag / date を指定し、ブログ記事をそれぞれのタイプごとにフィルタリングする事ができる。
      * また、$type を指定しない場合は、詳細ページを表示する。
-     * 
+     *
      * ### URL例
      * - カテゴリ別記事一覧： /news/archives/category/category-name
      * - 作成者別記事一覧： /news/archives/author/author-name

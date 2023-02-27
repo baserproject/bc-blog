@@ -15,6 +15,8 @@ namespace BcBlog\Test\TestCase\View\Helper;
 use App\View\AppView;
 use BaserCore\Test\Factory\ContentFactory;
 use BaserCore\Test\Factory\SiteFactory;
+use BaserCore\Test\Scenario\InitAppScenario;
+use BaserCore\Test\Scenario\RootContentScenario;
 use BaserCore\TestSuite\BcTestCase;
 use BcBlog\Service\BlogPostsService;
 use BcBlog\Service\BlogPostsServiceInterface;
@@ -22,10 +24,10 @@ use BcBlog\Test\Factory\BlogCategoryFactory;
 use BcBlog\Test\Factory\BlogContentFactory;
 use BcBlog\Test\Factory\BlogPostFactory;
 use BcBlog\Test\Scenario\BlogContentScenario;
+use BcBlog\Test\Scenario\MultiSiteBlogPostScenario;
 use BcBlog\Test\Scenario\MultiSiteBlogScenario;
 use BcBlog\View\Helper\BlogHelper;
 use Cake\Core\Configure;
-use Cake\View\View;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
 
 /**
@@ -50,6 +52,9 @@ class BlogHelperTest extends BcTestCase
         'plugin.BaserCore.Factory/Sites',
         'plugin.BaserCore.Factory/Contents',
         'plugin.BaserCore.Factory/ContentFolders',
+        'plugin.BaserCore.Factory/Users',
+        'plugin.BaserCore.Factory/UserGroups',
+        'plugin.BaserCore.Factory/UsersUserGroups',
         'plugin.BcBlog.Factory/BlogContents',
         'plugin.BcBlog.Factory/BlogCategories',
         'plugin.BcBlog.Factory/BlogPosts',
@@ -108,25 +113,25 @@ class BlogHelperTest extends BcTestCase
     public function testSetContent($blogContentId, $viewVars, $expected)
     {
         $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        if ($viewVars) {
-            $View = new View();
-            $View->viewVars = ['blogContent' => [
-                'BlogContent' => [
-                    'id' => 3,
-                    'name' => 'test',
-                ]
-            ]];
-            $View->request = $this->_getRequest('/');
-            $View->request->params['Content']['type'] = 'BlogContent';
-            $this->Blog = new BlogHelper($View);
-        }
-        $this->Blog->blogContent = null;
-        $this->Blog->setContent($blogContentId);
-        $result = null;
-        if (!empty($this->Blog->blogContent['id'])) {
-            $result = $this->Blog->blogContent['id'];
-        }
-        $this->assertEquals($result, $expected, 'ブログコンテンツデータを正しくセットできません');
+//        if ($viewVars) {
+//            $View = new View();
+//            $View->viewVars = ['blogContent' => [
+//                'BlogContent' => [
+//                    'id' => 3,
+//                    'name' => 'test',
+//                ]
+//            ]];
+//            $View->request = $this->_getRequest('/');
+//            $View->request->params['Content']['type'] = 'BlogContent';
+//            $this->Blog = new BlogHelper($View);
+//        }
+//        $this->Blog->blogContent = null;
+//        $this->Blog->setContent($blogContentId);
+//        $result = null;
+//        if (!empty($this->Blog->blogContent['id'])) {
+//            $result = $this->Blog->blogContent['id'];
+//        }
+//        $this->assertEquals($result, $expected, 'ブログコンテンツデータを正しくセットできません');
     }
 
     public function setContentDataProvider()
@@ -232,39 +237,51 @@ class BlogHelperTest extends BcTestCase
      * ブログ記事のURLを取得する
      *
      * @param int $blogContentId ブログコンテンツID
-     * @param int $no ブログ記事NO
+     * @param string $baseUrl ベースURL
+     * @param bool $useBase ベースとなるURLを付与するかどうか
      * @param string $expects 期待値
      * @dataProvider getPostLinkUrlDataProvider
      */
-    public function testGetPostLinkUrl($blogContentId, $no, $base, $useBase, $expects)
+    public function testGetPostLinkUrl($blogContentId, $baseUrl, $useBase, $expects)
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
+        $this->truncateTable('contents');
+        $this->truncateTable('blog_contents');
+
+        // データ生成
+        $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
+
+        // ブログ記事を取得
+        $post = BlogPostFactory::find()->where(
+            ['blog_content_id' => $blogContentId]
+        )->first();
+
+        // 現在のサイトを指定
+        $site = SiteFactory::get(1);
+        $request = $this->getRequest(
+            '/', [], 'GET', $baseUrl ? ['base' => $baseUrl] : []
+        )->withAttribute('currentSite', $site);
+        $this->Blog->getView()->setRequest($request);
         $siteUrl = Configure::read('BcEnv.siteUrl');
-        Configure::write('BcEnv.siteUrl', 'http://main.com');
-        $this->loadFixtures('ContentBcContentsRoute', 'SiteBcContentsRoute', 'BlogContentMultiSite');
-        $this->Blog->request = $this->_getRequest('/');
-        $this->Blog->request->base = $base;
-        $post = ['BlogPost' => [
-            'blog_content_id' => $blogContentId,
-            'no' => $no,
-        ]];
+        Configure::write('BcEnv.siteUrl', 'https://main.com');
+
+        // テスト対象メソッド
         $result = $this->Blog->getPostLinkUrl($post, $useBase);
-        Configure::write('BcEnv.siteUrl', $siteUrl);
+        // Configure::write('BcEnv.siteUrl', $siteUrl);
+
         $this->assertEquals($expects, $result, '記事へのリンクを正しく取得できません');
     }
 
     public function getPostLinkUrlDataProvider()
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
         return [
-            [10, 3, '', false, false],
-            [1, 3, '', false, '/news/archives/3'],
-            [1, 3, '/sub', false, '/news/archives/3'],
-            [1, 3, '/sub', true, '/sub/news/archives/3'],
-            [3, 3, '', false, 'http://main.com/en/news/archives/3'],
-            [4, 3, '', false, 'http://sub.main.com/news/archives/3'],
-            [5, 3, '', false, 'http://another.com/news/archives/3'],
-            [6, 3, '', false, 'http://another.com/news/archives/3']
+            'コンテンツURLなし' => [11, '', false, false],
+            'ベースURLなし' => [6, '', false, '/news/archives/3'],
+            'ベースURLあり' => [6, '/sub', false, '/news/archives/3'],
+            'ベースURLあり、URL付与あり' => [6, '/sub', true, '/sub/news/archives/3'],
+            'sサイト' => [7, '', false, 'https://main.com/s/news/archives/4'],
+            'enサイト' => [8, '', false, 'https://main.com/en/news/archives/5'],
+            '別サイト' => [9, '', false, 'https://example.com/news/archives/6'],
+            'サブドメイン' => [10, '', false, 'https://sub.main.com/archives/7'],
         ];
     }
 
@@ -378,14 +395,14 @@ class BlogHelperTest extends BcTestCase
         $service = $this->getService(BlogPostsServiceInterface::class);
 
         // テストを実行する
-        $blogPost = $service->get(1);
+        $blogPost = $service->get(1, ['contain' => ['BlogCategories']]);
         $result = $this->Blog->getCategory($blogPost);
         $this->assertEquals('<a href="/news/archives/category/category_name">category title</a>', $result);
         // URLを作成しない場合のテスト
         $result = $this->Blog->getCategory($blogPost, ['link' => false]);
         $this->assertEquals('category title', $result);
         // カテゴリは空になるテスト
-        $blogPost = $service->get(2);
+        $blogPost = $service->get(2, ['contain' => ['BlogCategories']]);
         $result = $this->Blog->getCategory($blogPost);
         $this->assertEmpty($result);
     }
@@ -703,6 +720,8 @@ class BlogHelperTest extends BcTestCase
      */
     public function testGetEyeCatch()
     {
+        $this->loadFixtureScenario(InitAppScenario::class);
+        $this->loadFixtureScenario(RootContentScenario::class, 2, 1, null, '', '/');
         // テストデータを作る
         BlogPostFactory::make([
             'id' => 1,
@@ -715,6 +734,9 @@ class BlogHelperTest extends BcTestCase
             'name' => 'test name',
             'blog_category_id' => 1,
         ])->persist();
+
+
+        $this->getRequest();
         $post = BlogPostFactory::get(1);
 
         // $optionはデフォルト値のテスト

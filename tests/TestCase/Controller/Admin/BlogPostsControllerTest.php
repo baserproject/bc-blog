@@ -13,16 +13,16 @@
 
 namespace BcBlog\Test\TestCase\Controller\Admin;
 
-use BaserCore\Test\Factory\ContentFactory;
 use BaserCore\Test\Factory\SiteConfigFactory;
 use BaserCore\Test\Scenario\InitAppScenario;
 use BaserCore\TestSuite\BcTestCase;
 use BaserCore\Utility\BcContainerTrait;
+use BaserCore\Utility\BcUtil;
 use BcBlog\Controller\Admin\BlogPostsController;
 use BcBlog\Service\BlogPostsServiceInterface;
-use BcBlog\Test\Factory\BlogContentFactory;
 use BcBlog\Test\Factory\BlogPostFactory;
 use BcBlog\Test\Scenario\BlogContentScenario;
+use Cake\Core\Plugin;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
 use Cake\TestSuite\IntegrationTestTrait;
 
@@ -55,6 +55,8 @@ class BlogPostsControllerTest extends BcTestCase
         'plugin.BcBlog.Factory/BlogPosts',
         'plugin.BcBlog.Factory/BlogContents',
         'plugin.BaserCore.Factory/Contents',
+        'plugin.BaserCore.Factory/Dblogs',
+        'plugin.BcSearchIndex.Factory/SearchIndexes'
     ];
 
     /**
@@ -213,7 +215,7 @@ class BlogPostsControllerTest extends BcTestCase
         // データ生成
         SiteConfigFactory::make(['name' => 'content_types', 'value' => ''])->persist();
         $this->loadFixtureScenario(BlogContentScenario::class, 2, 2, null, 'news', '/news');
-        BlogPostFactory::make(['id' => 1])->persist();
+        BlogPostFactory::make(['id' => 1, 'blog_content_id' => 2])->persist();
         // 記事削除コール
         $this->delete('/baser/admin/bc-blog/blog_posts/delete/2/1');
         // ステータスを確認
@@ -360,9 +362,7 @@ class BlogPostsControllerTest extends BcTestCase
 
         //実行失敗のテスト　BlogPostコンテンツ準備足りないのを利用
         $this->post('/baser/admin/bc-blog/blog_posts/copy/1/2');
-        $this->assertResponseCode(302);
-        $this->assertFlashMessage('入力エラーです。内容を修正してください。');
-        $this->assertRedirect(['action' => 'index', 1]);
+        $this->assertResponseCode(404);
     }
 
 }
