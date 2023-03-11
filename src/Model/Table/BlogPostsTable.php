@@ -76,6 +76,7 @@ class BlogPostsTable extends BlogAppTable
             'className' => 'BcBlog.BlogTags',
             'foreignKey' => 'blog_post_id',
             'targetForeignKey' => 'blog_tag_id',
+            'through' => 'BcBlog.BlogPostsBlogTags',
             'joinTable' => 'blog_posts_blog_tags',
         ]);
         $this->hasMany('BlogComments', [
@@ -127,45 +128,46 @@ class BlogPostsTable extends BlogAppTable
         $validator
             ->scalar('name')
             ->allowEmptyString('name')
-            ->maxLength('name', 255, __d('baser', 'スラッグは255文字以内で入力してください。'))
+            ->maxLength('name', 255, __d('baser_core', 'スラッグは255文字以内で入力してください。'))
             ->add('name', [
                 'nameUnique' => [
                     'rule' => 'validateUnique',
                     'provider' => 'table',
-                    'message' => __d('baser', '既に登録のあるスラッグです。')
-                ]]);
+                    'message' => __d('baser_core', '既に登録のあるスラッグです。')
+                ]])
+            ->regex('name', '/\D/', __d('baser_core', '数値だけのスラッグを登録することはできません。'));
         $validator
             ->scalar('title')
-            ->maxLength('title', 255, __d('baser', 'タイトルは255文字以内で入力してください。'))
-            ->requirePresence('title', 'update', __d('baser', 'タイトルを入力してください。'))
-            ->notEmptyString('title', __d('baser', 'タイトルを入力してください。'));
+            ->maxLength('title', 255, __d('baser_core', 'タイトルは255文字以内で入力してください。'))
+            ->requirePresence('title', 'update', __d('baser_core', 'タイトルを入力してください。'))
+            ->notEmptyString('title', __d('baser_core', 'タイトルを入力してください。'));
         $validator
             ->scalar('content')
             ->add('contents', [
                 'containsScript' => [
                     'rule' => ['containsScript'],
                     'provider' => 'bc',
-                    'message' => __d('baser', '概要欄でスクリプトの入力は許可されていません。')
+                    'message' => __d('baser_core', '概要欄でスクリプトの入力は許可されていません。')
                 ]
             ]);
         $validator
             ->scalar('detail')
-            ->maxLengthBytes('detail', 64000, __d('baser', '本稿欄に保存できるデータ量を超えています。'))
+            ->maxLengthBytes('detail', 64000, __d('baser_core', '本稿欄に保存できるデータ量を超えています。'))
             ->add('detail', [
                 'containsScript' => [
                     'rule' => ['containsScript'],
                     'provider' => 'bc',
-                    'message' => __d('baser', '本稿欄でスクリプトの入力は許可されていません。')
+                    'message' => __d('baser_core', '本稿欄でスクリプトの入力は許可されていません。')
                 ]
             ]);
         $validator
             ->scalar('detail_draft')
-            ->maxLengthBytes('detail_draft', 64000, __d('baser', '草稿欄に保存できるデータ量を超えています。'))
+            ->maxLengthBytes('detail_draft', 64000, __d('baser_core', '草稿欄に保存できるデータ量を超えています。'))
             ->add('detail_draft', [
                 'containsScript' => [
                     'rule' => ['containsScript'],
                     'provider' => 'bc',
-                    'message' => __d('baser', '草稿欄でスクリプトの入力は許可されていません。')
+                    'message' => __d('baser_core', '草稿欄でスクリプトの入力は許可されていません。')
                 ]
             ]);
         $validator
@@ -175,14 +177,14 @@ class BlogPostsTable extends BlogAppTable
                 'checkDate' => [
                     'rule' => ['checkDate'],
                     'provider' => 'bc',
-                    'message' => __d('baser', '公開開始日の形式が不正です。')
+                    'message' => __d('baser_core', '公開開始日の形式が不正です。')
                 ]
             ])
             ->add('publish_begin', [
                 'checkDateRange' => [
                     'rule' => ['checkDateRange', ['publish_begin', 'publish_end']],
                     'provider' => 'bc',
-                    'message' => __d('baser', '公開期間が不正です。')
+                    'message' => __d('baser_core', '公開期間が不正です。')
                 ]
             ]);
         $validator
@@ -192,36 +194,36 @@ class BlogPostsTable extends BlogAppTable
                 'checkDate' => [
                     'rule' => ['checkDate'],
                     'provider' => 'bc',
-                    'message' => __d('baser', '公開開始日の形式が不正です。')
+                    'message' => __d('baser_core', '公開開始日の形式が不正です。')
                 ]
             ]);
         $validator
             ->dateTime('posted')
-            ->notEmptyString('posted', __d('baser', '投稿日を入力してください。'))
+            ->notEmptyString('posted', __d('baser_core', '投稿日を入力してください。'))
             ->add('posted', [
                 'checkDate' => [
                     'rule' => ['checkDate'],
                     'provider' => 'bc',
-                    'message' => __d('baser', '投稿日の形式が不正です。')
+                    'message' => __d('baser_core', '投稿日の形式が不正です。')
                 ]
             ]);
         $validator
             ->integer('user_id')
-            ->notEmptyString('user_id', __d('baser', '投稿者を選択してください。'));
+            ->notEmptyString('user_id', __d('baser_core', '投稿者を選択してください。'));
         $validator
             ->allowEmptyString('eye_catch')
             ->add('eye_catch', [
                 'fileCheck' => [
                     'rule' => ['fileCheck', BcUtil::convertSize(ini_get('upload_max_filesize'))],
                     'provider' => 'bc',
-                    'message' => __d('baser', 'ファイルのアップロード制限を超えています。')
+                    'message' => __d('baser_core', 'ファイルのアップロード制限を超えています。')
                 ]
             ])
             ->add('eyecatch', [
                 'fileExt' => [
                     'rule' => ['fileExt', ['gif', 'jpg', 'jpeg', 'jpe', 'jfif', 'png']],
                     'provider' => 'bc',
-                    'message' => __d('baser', '許可されていないファイルです。')
+                    'message' => __d('baser_core', '許可されていないファイルです。')
                 ]
             ]);
         return $validator;
@@ -594,7 +596,7 @@ class BlogPostsTable extends BlogAppTable
         }
 
         return [
-            'type' => __d('baser', 'ブログ'),
+            'type' => __d('baser_core', 'ブログ'),
             'model_id' => $post->id,
             'content_filter_id' => !empty($post->blog_category_id)? $post->blog_category_id : '',
             'content_id' => $content->id,
@@ -632,7 +634,7 @@ class BlogPostsTable extends BlogAppTable
         }
 
         $data->user_id = BcUtil::loginUser()['id'];
-        $data->name .= '_copy';
+        if($data->name) $data->name .= '_copy';
         $data->title .= '_copy';
         $data->no = $this->getMax('no', ['BlogPosts.blog_content_id' => $data->blog_content_id]) + 1;
         $data->status = false;
@@ -779,21 +781,34 @@ class BlogPostsTable extends BlogAppTable
      * 公開状態の記事をNOより取得する
      *
      * @param int $blogContentId
-     * @param int $no
+     * @param int|string $no
      * @return array|\Cake\Datasource\EntityInterface|null
      * @checked
      * @noTodo
      */
     public function getPublishByNo($blogContentId, $no)
     {
-        return $this->find()->where(array_merge([
+        $conditions = array_merge([
             'BlogPosts.blog_content_id' => $blogContentId,
-            'BlogPosts.no' => $no
-        ], $this->getConditionAllowPublish()))
+        ], $this->getConditionAllowPublish());
+        if (is_numeric($no)) {
+            $conditions = array_merge_recursive(
+                $conditions,
+                ['BlogPosts.no' => $no]
+            );
+        } else {
+            $conditions = array_merge_recursive(
+                $conditions,
+                ['BlogPosts.name' => rawurldecode($no)]
+            );
+        }
+        return $this->find()->where($conditions)
             ->contain([
                 'BlogContents' => ['Contents' => ['Sites']],
                 'BlogCategories',
-                'BlogTags'])
+                'BlogTags',
+                'BlogComments'
+            ])
             ->first();
     }
 

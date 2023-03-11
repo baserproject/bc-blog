@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 use BaserCore\Database\Migration\BcMigration;
 
-class CreateBlogTags extends BcMigration
+class AddAuthCaptchaToBlogContents extends BcMigration
 {
     /**
      * Up Method.
@@ -14,23 +14,13 @@ class CreateBlogTags extends BcMigration
      */
     public function up()
     {
-        $this->table('blog_tags')
-            ->addColumn('name', 'string', [
-                'default' => null,
-                'limit' => 100,
+        $this->table('blog_contents')
+            ->addColumn('auth_captcha', 'boolean', [
+                'after' => 'comment_approve',
+                'default' => false,
                 'null' => true,
             ])
-            ->addColumn('created', 'datetime', [
-                'default' => null,
-                'limit' => null,
-                'null' => true,
-            ])
-            ->addColumn('modified', 'datetime', [
-                'default' => null,
-                'limit' => null,
-                'null' => true,
-            ])
-            ->create();
+            ->update();
     }
 
     /**
@@ -42,6 +32,8 @@ class CreateBlogTags extends BcMigration
      */
     public function down()
     {
-        $this->table('blog_tags')->drop()->save();
+        $this->table('blog_contents')
+            ->removeColumn('auth_captcha')
+            ->update();
     }
 }

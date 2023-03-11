@@ -13,6 +13,7 @@ namespace BcBlog\Test\TestCase\Controller\Api;
 
 use BaserCore\Service\DblogsServiceInterface;
 use BaserCore\Test\Factory\ContentFactory;
+use BaserCore\Test\Factory\PermissionFactory;
 use BaserCore\Test\Factory\SiteConfigFactory;
 use BaserCore\Test\Scenario\InitAppScenario;
 use BaserCore\TestSuite\BcTestCase;
@@ -51,6 +52,7 @@ class BlogPostsControllerTest extends BcTestCase
         'plugin.BcBlog.Factory/BlogContents',
         'plugin.BcBlog.Factory/BlogPosts',
         'plugin.BaserCore.Factory/Dblogs',
+        'plugin.BaserCore.Factory/Permissions',
     ];
 
     /**
@@ -124,6 +126,8 @@ class BlogPostsControllerTest extends BcTestCase
         ContentFactory::make(['plugin' => 'BcBlog', 'type' => 'BlogContent', 'entity_id' => 1])->persist();
         BlogContentFactory::make(['id' => 1])->persist();
         BlogPostFactory::make(['id' => 1, 'blog_content_id' => 1, 'status' => true])->persist();
+        PermissionFactory::make()->allowGuest('/baser/api/*')->persist();
+
         // APIを呼ぶ
         $this->get('/baser/api/bc-blog/blog_posts/view/1.json');
         // レスポンスを確認
@@ -140,7 +144,7 @@ class BlogPostsControllerTest extends BcTestCase
         $this->assertResponseCode(404);
         // 戻り値を確認
         $result = json_decode((string)$this->_response->getBody());
-        $this->assertEquals('Record not found in table "blog_posts"', $result->message);
+        $this->assertEquals('データが見つかりません。', $result->message);
 
         //ログインしていない状態では status パラメーターへへのアクセスを禁止するか確認
         $this->get('/baser/api/bc-blog/blog_posts/view/1.json?status=publish');
@@ -254,10 +258,10 @@ class BlogPostsControllerTest extends BcTestCase
         //存在しないBlogPostIDをコビー場合、
         $this->post('/baser/api/bc-blog/blog_posts/copy/100000.json?token=' . $this->accessToken);
         //ステータスを確認
-        $this->assertResponseCode(500);
+        $this->assertResponseCode(404);
         //戻る値を確認
         $result = json_decode((string)$this->_response->getBody());
-        $this->assertEquals('データベース処理中にエラーが発生しました。Record not found in table "blog_posts"', $result->message);
+        $this->assertEquals('データが見つかりません。', $result->message);
     }
 
     /**
@@ -288,10 +292,10 @@ class BlogPostsControllerTest extends BcTestCase
         //APIをコル
         $this->post('/baser/api/bc-blog/blog_posts/publish/2.json?token=' . $this->accessToken);
         //ステータスを確認
-        $this->assertResponseCode(500);
-        // 戻り値を確認
+        $this->assertResponseCode(404);
+        //戻る値を確認
         $result = json_decode((string)$this->_response->getBody());
-        $this->assertEquals('データベース処理中にエラーが発生しました。Record not found in table "blog_posts"', $result->message);
+        $this->assertEquals('データが見つかりません。', $result->message);
     }
 
     /**
@@ -322,10 +326,10 @@ class BlogPostsControllerTest extends BcTestCase
         //APIをコル
         $this->post('/baser/api/bc-blog/blog_posts/unpublish/2.json?token=' . $this->accessToken);
         //ステータスを確認
-        $this->assertResponseCode(500);
-        // 戻り値を確認
+        $this->assertResponseCode(404);
+        //戻る値を確認
         $result = json_decode((string)$this->_response->getBody());
-        $this->assertEquals('データベース処理中にエラーが発生しました。Record not found in table "blog_posts"', $result->message);
+        $this->assertEquals('データが見つかりません。', $result->message);
     }
 
     /**
@@ -441,9 +445,9 @@ class BlogPostsControllerTest extends BcTestCase
         //存在しないBlogPostIDを削除場合、
         $this->post('/baser/api/bc-blog/blog_posts/delete/1.json?token=' . $this->accessToken);
         //ステータスを確認
-        $this->assertResponseCode(500);
+        $this->assertResponseCode(404);
         //戻る値を確認
         $result = json_decode((string)$this->_response->getBody());
-        $this->assertEquals('データベース処理中にエラーが発生しました。Record not found in table "blog_posts"', $result->message);
+        $this->assertEquals('データが見つかりません。', $result->message);
     }
 }

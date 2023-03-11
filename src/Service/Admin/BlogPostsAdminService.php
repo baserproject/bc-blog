@@ -100,12 +100,13 @@ class BlogPostsAdminService extends BlogPostsService implements BlogPostsAdminSe
             'categories' => $this->getControlSource('blog_category_id', [
                 'blogContentId' => $blogContent->id,
                 'postEditable' => true,
-                'empty' => __d('baser', '指定しない')
+                'empty' => __d('baser_core', '指定しない')
             ]),
             'hasNewCategoryAddablePermission' => $this->BlogPosts->BlogCategories->hasNewCategoryAddablePermission(
                 Hash::extract($user->user_groups, '{n}.id'),
                 $blogContent->id
             ),
+            'fullUrl' => $this->getUrl($blogContent->content, $post, true),
             'hasNewTagAddablePermission' => $this->BlogPosts->BlogTags->hasNewTagAddablePermission(
                 Hash::extract($user->user_groups, '{n}.id'),
                 $blogContent->id
@@ -139,7 +140,7 @@ class BlogPostsAdminService extends BlogPostsService implements BlogPostsAdminSe
             'categories' => $this->getControlSource('blog_category_id', [
                 'blogContentId' => $blogContent->id,
                 'postEditable' => true,
-                'empty' => __d('baser', '指定しない')
+                'empty' => __d('baser_core', '指定しない')
             ]),
             'hasNewCategoryAddablePermission' => $this->BlogPosts->BlogCategories->hasNewCategoryAddablePermission(
                 Hash::extract($user->user_groups, '{n}.id'),
@@ -149,6 +150,7 @@ class BlogPostsAdminService extends BlogPostsService implements BlogPostsAdminSe
                 Hash::extract($user->user_groups, '{n}.id'),
                 $blogContent->id
             ),
+            'fullUrl' => $this->getUrl($blogContent->content, $post, true),
             'publishLink' => $this->getPublishLink($post)
         ];
     }
@@ -164,13 +166,7 @@ class BlogPostsAdminService extends BlogPostsService implements BlogPostsAdminSe
     public function getPublishLink(BlogPost $post)
     {
         if (!$this->allowPublish($post)) return '';
-        /* @var \BaserCore\Service\ContentsService $contentsService */
-        $contentsService = $this->getService(ContentsServiceInterface::class);
-        return $contentsService->getUrl(
-            sprintf("%sarchives/%s", $post->blog_content->content->url, $post->no),
-            true,
-            $post->blog_content->content->site->use_subdomain
-        );
+        return $this->getUrl($post->blog_content->content, $post, true);
     }
 
     /**

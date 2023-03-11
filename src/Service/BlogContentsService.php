@@ -15,10 +15,13 @@ use BaserCore\Annotation\NoTodo;
 use BaserCore\Annotation\Checked;
 use BaserCore\Annotation\UnitTest;
 use BaserCore\Error\BcException;
+use BaserCore\Model\Entity\Content;
 use BaserCore\Utility\BcContainerTrait;
 use BaserCore\Utility\BcUtil;
+use BcBlog\Model\Entity\BlogContent;
 use BcBlog\Model\Table\BlogContentsTable;
 use Cake\Core\Configure;
+use Cake\Core\Plugin;
 use Cake\Datasource\EntityInterface;
 use Cake\ORM\Query;
 use Cake\ORM\TableRegistry;
@@ -143,8 +146,7 @@ class BlogContentsService implements BlogContentsServiceInterface
     public function update(EntityInterface $target, array $postData)
     {
         if (BcUtil::isOverPostSize()) {
-            throw new BcException(__d(
-                'baser',
+            throw new BcException(__d('baser_core',
                 '送信できるデータ量を超えています。合計で %s 以内のデータを送信してください。',
                 ini_get('post_max_size')
             ));
@@ -282,6 +284,22 @@ class BlogContentsService implements BlogContentsServiceInterface
         }
 
         return 'BcBlog...' . DS . 'Blog' . DS . $options['contentsTemplate'] . DS . $options['template'];
+    }
+
+    /**
+     * 検索インデックスの再構築が必要か判定
+     *
+     * @param Content|EntityInterface $before
+     * @param Content|EntityInterface $after
+     * @return bool
+     */
+    public function checkRequireSearchIndexReconstruction(EntityInterface $before, EntityInterface $after)
+    {
+        if(!Plugin::isLoaded('BcSearchIndex')) return false;
+        if($before->name !== $after->name) return true;
+        if($before->status !== $after->status) return true;
+        if($before->parent_id !== $after->parent_id) return true;
+        return false;
     }
 
 }

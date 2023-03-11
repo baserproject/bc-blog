@@ -17,7 +17,9 @@ use BaserCore\Annotation\UnitTest;
 use BaserCore\Error\BcException;
 use BcBlog\Service\BlogCommentsService;
 use BcBlog\Service\BlogCommentsServiceInterface;
+use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\ORM\Exception\PersistenceFailedException;
+use CakephpFixtureFactories\Error\PersistenceException;
 use Throwable;
 
 /**
@@ -29,15 +31,16 @@ class BlogCommentsController extends BcApiController
     /**
      * [API] ブログコメント一覧取得
      *
-     * @param BlogCommentsServiceInterface $blogCommentsService
+     * @param BlogCommentsServiceInterface $service
      * @checked
      * @noTodo
      * @unitTest
      */
-    public function index(BlogCommentsServiceInterface $blogCommentsService)
+    public function index(BlogCommentsServiceInterface $service)
     {
+        $this->request->allowMethod(['get']);
         $this->set([
-            'blogComments' => $this->paginate($blogCommentsService->getIndex($this->request->getQueryParams()))
+            'blogComments' => $this->paginate($service->getIndex($this->request->getQueryParams()))
         ]);
         $this->viewBuilder()->setOption('serialize', ['blogComments']);
     }
@@ -53,10 +56,22 @@ class BlogCommentsController extends BcApiController
      */
     public function view(BlogCommentsServiceInterface $service, $blogCommentId)
     {
+        $this->request->allowMethod(['get']);
+        $blogComment = $message = null;
+        try {
+            $blogComment = $service->get($blogCommentId);
+        } catch (RecordNotFoundException $e) {
+            $this->setResponse($this->response->withStatus(404));
+            $message = __d('baser_core', 'データが見つかりません。');
+        } catch (\Throwable $e) {
+            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。' . $e->getMessage());
+            $this->setResponse($this->response->withStatus(500));
+        }
         $this->set([
-            'blogComment' => $service->get($blogCommentId)
+            'blogComment' => $blogComment,
+            'message' => $message
         ]);
-        $this->viewBuilder()->setOption('serialize', ['blogComment']);
+        $this->viewBuilder()->setOption('serialize', ['blogComment', 'message']);
     }
 
     /**
@@ -70,25 +85,24 @@ class BlogCommentsController extends BcApiController
      */
     public function delete(BlogCommentsServiceInterface $service, $blogCommentId)
     {
-        $this->request->allowMethod(['post', 'put']);
+        $this->request->allowMethod(['post', 'delete']);
+        $blogComment = null;
         try {
             $blogComment = $service->get($blogCommentId);
             $service->delete($blogCommentId);
-            $message = __d('baser', 'ブログコメント「{0}」を削除しました。', $blogComment->no);
-        } catch (PersistenceFailedException $e) {
-            $this->setResponse($this->response->withStatus(400));
-            $blogComment = $e->getEntity();
-            $message = __d('baser', '入力エラーです。内容を修正してください。');
-        } catch (Throwable $e) {
+            $message = __d('baser_core', 'ブログコメント「{0}」を削除しました。', $blogComment->no);
+        } catch (RecordNotFoundException $e) {
+            $this->setResponse($this->response->withStatus(404));
+            $message = __d('baser_core', 'データが見つかりません。');
+        } catch (\Throwable $e) {
+            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。' . $e->getMessage());
             $this->setResponse($this->response->withStatus(500));
-            $message = __d('baser', 'データベース処理中にエラーが発生しました。' . $e->getMessage());
         }
         $this->set([
             'message' => $message,
-            'blogComment' => $blogComment,
-            'errors' => $blogComment->getErrors()
+            'blogComment' => $blogComment
         ]);
-        $this->viewBuilder()->setOption('serialize', ['blogComment', 'message', 'errors']);
+        $this->viewBuilder()->setOption('serialize', ['blogComment', 'message']);
     }
 
     /**
@@ -108,9 +122,9 @@ class BlogCommentsController extends BcApiController
     {
         $this->request->allowMethod(['post', 'put']);
         $allowMethod = [
-            'delete' => '削除',
-            'publish' => '公開',
-            'unpublish' => '非公開に'
+            'delete' => __d('baser_core', '削除'),
+            'publish' => __d('baser_core', '公開'),
+            'unpublish' => __d('baser_core', '非公開に')
         ];
         $method = $this->getRequest()->getData('batch');
         if (!isset($allowMethod[$method])) {
@@ -119,79 +133,72 @@ class BlogCommentsController extends BcApiController
             return;
         }
         $targets = $this->getRequest()->getData('batch_targets');
+        $errors = null;
         try {
             $service->batch($method, $targets);
             $this->BcMessage->setSuccess(
-                sprintf(__d('baser', 'ブログコメント「%s」を %s しました。'), implode(', ', $targets), $allowMethod[$method]),
+                sprintf(__d('baser_core', 'ブログコメント「%s」を %s しました。'), implode(', ', $targets), $allowMethod[$method]),
                 true,
                 false
             );
-            $message = __d('baser', '一括処理が完了しました。');
-        } catch (BcException $e) {
-            $this->setResponse($this->response->withStatus(400));
-            $message = __d('baser', $e->getMessage());
+            $message = __d('baser_core', '一括処理が完了しました。');
+        } catch (Throwable $e) {
+            $this->setResponse($this->response->withStatus(500));
+            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。' . $e->getMessage());
         }
-        $this->set(['message' => $message]);
-        $this->viewBuilder()->setOption('serialize', ['message']);
+        $this->set(['message' => $message, 'errors' => $errors]);
+        $this->viewBuilder()->setOption('serialize', ['message', 'errors']);
     }
 
     /**
-     * [AJAX] ブログコメントを登録する
+     * ブログコメントを登録する
      *
      * 画像認証を行い認証されればブログのコメントを登録する
      * コメント承認を利用していないブログの場合、公開されているコメント投稿者にアラートを送信する
      *
-     * @param string $blogContentId
-     * @param string $blogPostId
      * @return void | bool
      */
-    public function add($blogContentId, $blogPostId)
+    public function add(BlogCommentsServiceInterface $service)
     {
-        Configure::write('debug', 0);
+        $this->request->allowMethod(['post', 'put']);
+        $postData = $this->getRequest()->getData();
 
-        if (!$this->request->getData() || !$blogContentId || !$blogPostId) {
-            $this->notFound();
-            return;
+        if(!$postData['blog_content_id']) {
+            throw new BcException(__d('baser_core', 'パラメーターに blog_content_id が指定されていません。'));
+        }
+        if(!$postData['blog_post_id']) {
+            throw new BcException(__d('baser_core', 'パラメーターに blog_post_id が指定されていません。'));
         }
 
-        if (empty($this->blogContent)) {
-            $this->notFound();
-            return;
+        try {
+            $entity = $service->add($postData['blog_content_id'], $postData['blog_post_id'], $postData);
+        } catch (PersistenceFailedException $e) {
+            $entity = $e->getEntity();
+            $this->setResponse($this->response->withStatus(400));
+        } catch (BcException $e) {
+            $message = $e->getMessage();
+            $this->setResponse($this->response->withStatus(400));
+        } catch (Throwable $e) {
+            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。' . $e->getMessage());
+            $this->setResponse($this->response->withStatus(500));
         }
 
-        if (!$this->blogContent['BlogContent']['comment_use']) {
-            $this->notFound();
-            return;
+        $blogContent = $service->getBlogContent($postData['blog_content_id']);
+        $service->sendCommentToAdmin($entity);
+        if($blogContent->comment_approve) {
+            $service->sendCommentToContributor($entity);
         }
 
-        $result = $this->BlogComment->add(
-            $this->request->getData(),
-            $blogContentId,
-            $blogPostId,
-            $this->blogContent['BlogContent']['comment_approve']
-        );
-        if (!$result || !$captchaResult) {
-            $this->set('dbData', false);
-            return;
-        }
-
-        $content = $this->BlogPost->BlogContent->Content->findByType(
-            'BcBlog.BlogContent',
-            $this->blogContent['BlogContent']['id']
-        );
-        $this->request = $this->request->withData('Content',  $content['Content']);
-        $this->_sendCommentAdmin(
-            $blogPostId,
-            $this->request->getData()
-        );
-        // コメント承認機能を利用していない場合は、公開されているコメント投稿者にアラートを送信
-        if (!$this->blogContent['BlogContent']['comment_approve']) {
-            $this->_sendCommentContributor(
-                $blogPostId,
-                $this->request->getData()
-            );
-        }
-        $this->set('dbData', $result['BlogComment']);
+        $this->set([
+            'blogComment' => $entity?? null,
+            'message' => $message?? '',
+            'errors' => $entity?->getErrors()
+        ]);
+        $this->viewBuilder()->setOption('serialize', [
+            'blogComment',
+            'message',
+            'errors'
+        ]);
     }
 
 }
