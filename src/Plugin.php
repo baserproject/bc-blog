@@ -46,8 +46,10 @@ class Plugin extends BcPlugin
      */
     public function install($options = []) : bool
     {
-        // ここに必要なインストール処理を記述
-        return parent::install($options);
+        $result = parent::install($options);
+        // ブログ記事の投稿日を更新
+        $this->updateDateNow('BcBlog.BlogPosts', ['posted']);
+        return $result;
     }
 
     /**
@@ -88,16 +90,6 @@ class Plugin extends BcPlugin
      */
     public function routes($routes): void
     {
-        /**
-         * RSS
-         */
-         // TODO ucmitz 未実装
-//        $routes->connect('/rss/index', [
-//            'plugin' => 'BcBlog',
-//            'controller' => 'blog',
-//            'action' => 'index'
-//        ]);
-
         /**
          * Tag
          */
