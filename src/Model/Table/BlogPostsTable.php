@@ -153,7 +153,7 @@ class BlogPostsTable extends BlogAppTable
             ]);
         $validator
             ->scalar('detail')
-            ->maxLengthBytes('detail', 64000, __d('baser_core', '本稿欄に保存できるデータ量を超えています。'))
+            ->maxLengthBytes('detail', 16777215, __d('baser_core', '本稿欄に保存できるデータ量を超えています。'))
             ->add('detail', [
                 'containsScript' => [
                     'rule' => ['containsScript'],
@@ -163,7 +163,7 @@ class BlogPostsTable extends BlogAppTable
             ]);
         $validator
             ->scalar('detail_draft')
-            ->maxLengthBytes('detail_draft', 64000, __d('baser_core', '草稿欄に保存できるデータ量を超えています。'))
+            ->maxLengthBytes('detail_draft', 16777215, __d('baser_core', '草稿欄に保存できるデータ量を超えています。'))
             ->add('detail_draft', [
                 'containsScript' => [
                     'rule' => ['containsScript'],
@@ -246,7 +246,7 @@ class BlogPostsTable extends BlogAppTable
             return;
         }
         // 検索用テーブルに登録
-        if (empty($entity->content) || !empty($entity->content->exclude_search)) {
+        if (empty($entity->blog_content->content) || !empty($entity->blog_content->content->exclude_search)) {
             $this->setExcluded();
         }
     }
