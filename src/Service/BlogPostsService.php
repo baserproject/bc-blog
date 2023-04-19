@@ -255,9 +255,9 @@ class BlogPostsService implements BlogPostsServiceInterface
                     unset($fields[array_search('content_draft', $fields)]);
                     unset($fields[array_search('detail_draft', $fields)]);
                 }
-                $query = $this->BlogPosts->find()->contain(['BlogContents' => ['Contents']])->select($fields);
+                $query->contain(['BlogContents' => ['Contents']])->select($fields);
             } elseif(!isset($params['contain']['BlogContents']['Contents'])) {
-                $query = $this->BlogPosts->find()->contain(array_merge_recursive($query->getContain(), ['BlogContents' => ['Contents']]));
+                $query->contain(array_merge_recursive($query->getContain(), ['BlogContents' => ['Contents']]));
             }
             $conditions = array_merge($conditions, $this->BlogPosts->BlogContents->Contents->getConditionAllowPublish());
         } elseif ((string)$params['status'] === '0') {
@@ -820,7 +820,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      */
     public function getPrevPost(BlogPost $post)
     {
-        if(is_null($post->posted)) return null;
+        if(is_null($post->posted) || !$post->id) return null;
         $order = 'BlogPosts.posted DESC, BlogPosts.id DESC';
         // 投稿日が年月日時分秒が同一のデータの対応のため、投稿日が同じでIDが大きいデータを検索
         $conditions = array_merge_recursive([
@@ -857,7 +857,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      */
     public function getNextPost(BlogPost $post)
     {
-        if(is_null($post->posted)) return null;
+        if(is_null($post->posted) || !$post->id) return null;
         $order = 'BlogPosts.posted, BlogPosts.id';
         // 投稿日が年月日時分秒が同一のデータの対応のため、投稿日が同じでIDが小さいデータを検索
         $conditions = array_merge_recursive([
