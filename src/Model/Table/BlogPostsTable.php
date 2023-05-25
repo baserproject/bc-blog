@@ -120,6 +120,7 @@ class BlogPostsTable extends BlogAppTable
      * @return Validator
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function validationDefault(Validator $validator): Validator
     {
@@ -195,7 +196,7 @@ class BlogPostsTable extends BlogAppTable
                 'checkDate' => [
                     'rule' => ['checkDate'],
                     'provider' => 'bc',
-                    'message' => __d('baser_core', '公開開始日の形式が不正です。')
+                    'message' => __d('baser_core', '公開終了日の形式が不正です。')
                 ]
             ]);
         $validator
@@ -351,6 +352,7 @@ class BlogPostsTable extends BlogAppTable
      * @return array
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getEntryDates($blogContentId, $year, $month)
     {
@@ -373,6 +375,7 @@ class BlogPostsTable extends BlogAppTable
      * @return array
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getAuthors(int $blogContentId, array $options)
     {
@@ -411,6 +414,7 @@ class BlogPostsTable extends BlogAppTable
      * @return    boolean
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function existsEntry(int $blogContentId, int $year, int $month): bool
     {
@@ -433,6 +437,9 @@ class BlogPostsTable extends BlogAppTable
      * @param int $year
      * @param int $month
      * @return array
+     * @checked
+     * @noTodo
+     * @unitTest 
      */
     protected function _getEntryDatesConditions($blogContentId, $year, $month)
     {
@@ -488,24 +495,23 @@ class BlogPostsTable extends BlogAppTable
      * @return boolean 公開状態
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function allowPublish($post)
     {
-        $allowPublish = (int)$post->status;
-        if ($post->publish_begin === '0000-00-00 00:00:00') {
-            $post->publish_begin = null;
-        }
-        if ($post->publish_end === '0000-00-00 00:00:00') {
-            $post->publish_end = null;
+        if (!$post->status) {
+            return false;
         }
 
         // 期限を設定している場合に条件に該当しない場合は強制的に非公開とする
-        if (($post->publish_begin && $post->publish_begin >= date('Y-m-d H:i:s')) ||
-            ($post->publish_end && $post->publish_end <= date('Y-m-d H:i:s'))
+        $currentTime = time();
+        if (($post->publish_begin && $post->publish_begin->getTimestamp() > $currentTime) ||
+            ($post->publish_end && $post->publish_end->getTimestamp() < $currentTime)
         ) {
-            $allowPublish = false;
+            return false;
         }
-        return $allowPublish;
+
+        return true;
     }
 
     /**
@@ -640,6 +646,7 @@ class BlogPostsTable extends BlogAppTable
      * @return mixed page Or false
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function copy($id = null, $data = [])
     {
@@ -807,8 +814,9 @@ class BlogPostsTable extends BlogAppTable
      * @return array|\Cake\Datasource\EntityInterface|null
      * @checked
      * @noTodo
+     * @unitTest
      */
-    public function getPublishByNo(int $blogContentId, int $no, bool $preview = false)
+    public function getPublishByNo(int $blogContentId, mixed $no, bool $preview = false)
     {
         $conditions = ['BlogPosts.blog_content_id' => $blogContentId];
         if(!$preview) {
