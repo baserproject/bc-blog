@@ -34,24 +34,6 @@ class BlogPostsControllerTest extends BcTestCase
     use BcContainerTrait;
 
     /**
-     * Fixtures
-     *
-     * @var array
-     */
-    public $fixtures = [
-        'plugin.BaserCore.Factory/Sites',
-        'plugin.BaserCore.Factory/Contents',
-        'plugin.BaserCore.Factory/SiteConfigs',
-        'plugin.BaserCore.Factory/Users',
-        'plugin.BaserCore.Factory/UsersUserGroups',
-        'plugin.BaserCore.Factory/UserGroups',
-        'plugin.BcBlog.Factory/BlogContents',
-        'plugin.BcBlog.Factory/BlogPosts',
-        'plugin.BaserCore.Factory/Dblogs',
-        'plugin.BaserCore.Factory/Permissions',
-    ];
-
-    /**
      * Access Token
      * @var string
      */
@@ -68,7 +50,6 @@ class BlogPostsControllerTest extends BcTestCase
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->loadFixtureScenario(InitAppScenario::class);
         $token = $this->apiLoginAdmin(1);

@@ -31,19 +31,6 @@ class BlogCategoriesServiceTest extends \BaserCore\TestSuite\BcTestCase
     use IntegrationTestTrait;
 
     /**
-     * Fixtures
-     *
-     * @var array
-     */
-    protected $fixtures = [
-        'plugin.BcBlog.Factory/BlogCategories',
-        'plugin.BcBlog.Factory/BlogComments',
-        'plugin.BcBlog.Factory/BlogContents',
-        'plugin.BaserCore.Factory/Contents',
-        'plugin.BcBlog.Factory/BlogPosts',
-    ];
-
-    /**
      * @var BlogCategoriesService|null
      */
     public $BlogCategories = null;
@@ -55,7 +42,6 @@ class BlogCategoriesServiceTest extends \BaserCore\TestSuite\BcTestCase
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->BlogCategories = new BlogCategoriesService();
     }

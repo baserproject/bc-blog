@@ -42,26 +42,6 @@ class BlogPostsServiceTest extends BcTestCase
     use ScenarioAwareTrait;
 
     /**
-     * Fixtures
-     *
-     * @var array
-     */
-    public $fixtures = [
-        'plugin.BaserCore.Factory/Sites',
-        'plugin.BaserCore.Factory/SiteConfigs',
-        'plugin.BaserCore.Factory/Users',
-        'plugin.BaserCore.Factory/UsersUserGroups',
-        'plugin.BaserCore.Factory/UserGroups',
-        'plugin.BcBlog.Factory/BlogPosts',
-        'plugin.BcBlog.Factory/BlogTags',
-        'plugin.BaserCore.Factory/Contents',
-        'plugin.BaserCore.Factory/ContentFolders',
-        'plugin.BcBlog.Factory/BlogContents',
-        'plugin.BcBlog.Factory/BlogCategories',
-        'plugin.BcBlog.Factory/BlogPostsBlogTags',
-    ];
-
-    /**
      * set up
      *
      * @return void
@@ -1068,6 +1048,7 @@ class BlogPostsServiceTest extends BcTestCase
         BlogPostFactory::make([
             'id' => 1,
             'blog_content_id' => 3,
+            'no' => 100,
             'title' => 'blog post 1',
             'posted' => '2022-10-02 09:00:00',
             'status' => 1,
@@ -1077,6 +1058,7 @@ class BlogPostsServiceTest extends BcTestCase
         BlogPostFactory::make([
             'id' => 2,
             'blog_content_id' => 3,
+            'no' => 101,
             'title' => 'blog post 2',
             'posted' => '2022-10-02 09:00:00',
             'status' => 1,
@@ -1086,6 +1068,7 @@ class BlogPostsServiceTest extends BcTestCase
         BlogPostFactory::make([
             'id' => 3,
             'blog_content_id' => 3,
+            'no' => 102,
             'title' => 'blog post 3',
             'posted' => '2022-08-02 09:00:00',
             'status' => 1,
@@ -1122,6 +1105,7 @@ class BlogPostsServiceTest extends BcTestCase
         BlogPostFactory::make([
             'id' => 1,
             'blog_content_id' => 3,
+            'no' => 100,
             'title' => 'blog post 1',
             'posted' => '2022-10-02 09:00:00',
             'status' => 0,
@@ -1131,6 +1115,7 @@ class BlogPostsServiceTest extends BcTestCase
         BlogPostFactory::make([
             'id' => 2,
             'blog_content_id' => 3,
+            'no' => 101,
             'title' => 'blog post 2',
             'posted' => '2022-10-02 09:00:00',
             'status' => 1,
@@ -1140,6 +1125,7 @@ class BlogPostsServiceTest extends BcTestCase
         BlogPostFactory::make([
             'id' => 3,
             'blog_content_id' => 3,
+            'no' => 102,
             'title' => 'blog post 3',
             'posted' => '2022-08-02 09:00:00',
             'status' => 1,

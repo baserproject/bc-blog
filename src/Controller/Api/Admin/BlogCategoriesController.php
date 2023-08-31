@@ -71,6 +71,7 @@ class BlogCategoriesController extends BcAdminApiController
      *
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function index(BlogCategoriesServiceInterface $service)
     {
@@ -107,6 +108,7 @@ class BlogCategoriesController extends BcAdminApiController
      *
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function view(BlogCategoriesServiceInterface $service, $blogCategoryId)
     {
@@ -136,6 +138,7 @@ class BlogCategoriesController extends BcAdminApiController
      *
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function list(BlogCategoriesServiceInterface $service)
     {
