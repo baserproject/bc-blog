@@ -81,7 +81,7 @@ class BlogControllerTest extends BcTestCase
      */
     public function test_beforeFilter()
     {
-
+        $this->markTestIncomplete('このテストはまだ実装されていません。');
     }
 
     /**
@@ -96,6 +96,7 @@ class BlogControllerTest extends BcTestCase
             'description' => 'description test 1'])->persist();
         BlogPostFactory::make(['id' => '1', 'blog_content_id' => '1', 'title' => 'blog post'])->persist();
         ContentFactory::make(['plugin' => 'BcBlog',
+        	'entity_id' => 1,
             'status' => true,
             'lft' => 1,
             'rght' => 2,
@@ -215,6 +216,7 @@ class BlogControllerTest extends BcTestCase
      */
     public function test_posts()
     {
+        $this->markTestIncomplete('このテストはまだ実装されていません。');
         //準備
 
         //正常系実行
@@ -361,6 +363,7 @@ class BlogControllerTest extends BcTestCase
      */
     public function test_captcha()
     {
+        $this->markTestIncomplete('このテストはまだ実装されていません。');
         //準備
 
         //正常系実行
