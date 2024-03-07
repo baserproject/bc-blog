@@ -51,7 +51,6 @@ class BlogContentsTable extends BlogAppTable
 
         $validator
             ->scalar('description')
-            ->allowEmptyString('description')
             ->add('description', [
                 'containsScript' => [
                     'rule' => ['containsScript'],
