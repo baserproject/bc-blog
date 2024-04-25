@@ -234,10 +234,7 @@ class BlogPostsTable extends BlogAppTable
             return;
         }
         // 検索用テーブルに登録
-        if ($entity->exclude_search
-            || empty($entity->blog_content->content)
-            || !empty($entity->blog_content->content->exclude_search)
-        ) {
+        if (empty($entity->blog_content->content) || !empty($entity->blog_content->content->exclude_search)) {
             $this->setExcluded();
         }
     }
