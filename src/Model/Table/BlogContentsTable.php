@@ -51,7 +51,6 @@ class BlogContentsTable extends BlogAppTable
 
         $validator
             ->scalar('description')
-            ->allowEmptyString('description')
             ->add('description', [
                 'containsScript' => [
                     'rule' => ['containsScript'],
@@ -149,7 +148,7 @@ class BlogContentsTable extends BlogAppTable
         if (!Plugin::isLoaded('BcSearchIndex')) {
             return true;
         }
-        if (empty($entity->content) || !empty($entity->content->exclude_search)) {
+        if (empty($entity->content) || !empty($entity->content->exclude_search) || !$entity->content->status) {
             $this->setExcluded();
         }
         return true;
@@ -217,7 +216,7 @@ class BlogContentsTable extends BlogAppTable
     public function copy(
         int $id,
         int $newParentId,
-        string|null $newTitle,
+        string $newTitle,
         int $newAuthorId,
         int $newSiteId = null
     )
@@ -244,7 +243,7 @@ class BlogContentsTable extends BlogAppTable
         $data->content = new Content([
             'name' => $name,
             'parent_id' => $newParentId,
-            'title' => $newTitle ?? $oldData->content->title . '_copy',
+            'title' => $newTitle ?? $oldData->title . '_copy',
             'author_id' => $newAuthorId,
             'site_id' => $newSiteId,
             'exclude_search' => false,

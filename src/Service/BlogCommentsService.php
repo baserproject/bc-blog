@@ -24,7 +24,6 @@ use BcBlog\Model\Entity\BlogPost;
 use BcBlog\Model\Table\BlogCommentsTable;
 use Cake\Datasource\EntityInterface;
 use Cake\Mailer\MailerAwareTrait;
-use Cake\ORM\Table;
 use Cake\ORM\TableRegistry;
 use Cake\Routing\Router;
 
@@ -41,12 +40,6 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      */
     use MailerAwareTrait;
     use BcContainerTrait;
-
-    /**
-     * BlogComments Table
-     * @var BlogCommentsTable|Table
-     */
-    public BlogCommentsTable|Table $BlogComments;
 
     /**
      * ブログコメントを初期化する
@@ -92,9 +85,7 @@ class BlogCommentsService implements BlogCommentsServiceInterface
         if (!empty($options['blog_post_id'])) {
             $query = $query->where(['BlogComments.blog_post_id' => $options['blog_post_id']]);
         }
-        if (!empty($options['blog_content_id'])) {
-            $query = $query->where(['BlogComments.blog_content_id' => $options['blog_content_id']]);
-        }
+
         if ($options['status'] === 'publish') {
             $query->where($this->BlogComments->BlogContents->Contents->getConditionAllowPublish());
         }

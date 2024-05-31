@@ -27,11 +27,9 @@ use Cake\Database\Driver\Postgres;
 use Cake\Database\Driver\Sqlite;
 use Cake\Datasource\ConnectionManager;
 use Cake\Datasource\EntityInterface;
-use Cake\Datasource\QueryInterface;
 use Cake\Http\Exception\NotFoundException;
 use Cake\I18n\FrozenTime;
 use Cake\ORM\Query;
-use Cake\ORM\Table;
 use Cake\ORM\TableRegistry;
 use Cake\Utility\Hash;
 
@@ -47,12 +45,6 @@ class BlogPostsService implements BlogPostsServiceInterface
      * Trait
      */
     use BcContainerTrait;
-
-    /**
-     * BlogPostsTable
-     * @var BlogPostsTable|Table
-     */
-    public BlogPostsTable|Table $BlogPosts;
 
     /**
      * Constructor
@@ -257,12 +249,17 @@ class BlogPostsService implements BlogPostsServiceInterface
         // ステータス
         if (($params['status'] === 'publish' || (string)$params['status'] === '1') && !$params['preview']) {
             $conditions = $this->BlogPosts->getConditionAllowPublish();
-            $conditions = array_merge($conditions, $this->BlogPosts->BlogContents->Contents->getConditionAllowPublish());
-            $query->contain(['BlogContents' => ['Contents']]);
-            if($params['draft'] === false) {
-                $query->selectAllExcept($this->BlogPosts, ['content_draft', 'detail_draft']);
-                $query = $this->selectContains($query);
+            if (empty($params['contain']) || $params['draft'] === false) {
+                $fields = $this->BlogPosts->getSchema()->columns();
+                if ($params['draft'] === false) {
+                    unset($fields[array_search('content_draft', $fields)]);
+                    unset($fields[array_search('detail_draft', $fields)]);
+                }
+                $query->contain(['BlogContents' => ['Contents']])->select($fields);
+            } elseif (!isset($params['contain']['BlogContents']['Contents'])) {
+                $query->contain(array_merge_recursive($query->getContain(), ['BlogContents' => ['Contents']]));
             }
+            $conditions = array_merge($conditions, $this->BlogPosts->BlogContents->Contents->getConditionAllowPublish());
         } elseif ((string)$params['status'] === '0') {
             $conditions = ['BlogPosts.status' => false];
         } else {
@@ -316,7 +313,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         }
         // タグ名
         if ($params['tag']) {
-            $query = $this->createTagCondition($query, $params['tag']);
+            $conditions = $this->createTagCondition($conditions, $params['tag']);
         }
         // 年月日
         if ($params['year'] || $params['month'] || $params['day']) {
@@ -343,51 +340,6 @@ class BlogPostsService implements BlogPostsServiceInterface
             $conditions = $this->createAuthorCondition($conditions, $params['author']);
         }
         return $query->where($conditions);
-    }
-
-    /**
-     * Contains を select を前提として適用する
-     * select を利用した場合、関連テーブルのカラムを指定しないと、取得できないため
-     * @param Query $query
-     * @param array $contains
-     * @return Query
-     * @noTodo
-     * @checked
-     */
-    public function selectContains(Query $query, array $contains = [])
-    {
-        if(!$contains) $contains = $query->getContain();
-        if(isset($contains['BlogContents'])) {
-            $query->contain(['BlogContents' => function($q) {
-                return $q->select($this->BlogPosts->BlogContents);
-            }]);
-        }
-        if(isset($contains['BlogContents']['Contents'])) {
-            $query->contain(['BlogContents.Contents' => function($q) {
-                return $q->select($this->BlogPosts->BlogContents->Contents);
-            }]);
-        }
-        if(isset($contains['Users'])) {
-            $query->contain(['Users' => function($q) {
-                return $q->select($this->BlogPosts->Users);
-            }]);
-        }
-        if(isset($contains['BlogComments'])) {
-            $query->contain(['BlogComments' => function($q) {
-                return $q->select($this->BlogPosts->BlogComments);
-            }]);
-        }
-        if(isset($contains['BlogCategories'])) {
-            $query->contain(['BlogCategories' => function($q) {
-                return $q->select($this->BlogPosts->BlogCategories);
-            }]);
-        }
-        if(isset($contains['BlogTags'])) {
-            $query->contain(['BlogTags' => function($q) {
-                return $q->select($this->BlogPosts->BlogTags);
-            }]);
-        }
-        return $query;
     }
 
     /**
@@ -455,23 +407,30 @@ class BlogPostsService implements BlogPostsServiceInterface
     /**
      * タグ条件を生成する
      *
-     * @param Query $query
+     * @param array $conditions
      * @param mixed $tag タグ（配列可）
-     * @return QueryInterface
+     * @return array
      * @checked
      * @noTodo
      * @unitTest
      */
-    public function createTagCondition(Query $query, $tag): QueryInterface
+    public function createTagCondition($conditions, $tag)
     {
         if (!is_array($tag)) $tag = [$tag];
         foreach($tag as $key => $value) {
             $tag[$key] = rawurldecode($value);
         }
-        $query->matching('BlogTags', function($q) use ($tag) {
-            return $q->where(['BlogTags.name IN' => $tag]);
-        });
-        return $query;
+        $tags = $this->BlogPosts->BlogTags->find()
+            ->where(['BlogTags.name IN' => $tag])
+            ->contain(['BlogPosts'])
+            ->all()->toArray();
+        $postIds = Hash::extract($tags, '{n}.blog_posts.{n}.id');
+        if ($postIds) {
+            $conditions['BlogPosts.id IN'] = $postIds;
+        } else {
+            $conditions['BlogPosts.id IS'] = null;
+        }
+        return $conditions;
     }
 
     /**
