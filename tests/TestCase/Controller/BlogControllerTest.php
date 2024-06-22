@@ -15,6 +15,8 @@ use BaserCore\Test\Factory\ContentFactory;
 use BaserCore\Test\Scenario\InitAppScenario;
 use BaserCore\Test\Factory\SiteConfigFactory;
 use BaserCore\TestSuite\BcTestCase;
+use BaserCore\Utility\BcFile;
+use BaserCore\Utility\BcFolder;
 use BcBlog\Controller\BlogController;
 use BcBlog\Service\BlogContentsServiceInterface;
 use BcBlog\Service\BlogPostsServiceInterface;
@@ -28,7 +30,6 @@ use BcBlog\Test\Factory\BlogTagFactory;
 use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\TestSuite\IntegrationTestTrait;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
-use Cake\Filesystem\File;
 
 /**
  * Class BlogControllerTest
@@ -96,19 +97,18 @@ class BlogControllerTest extends BcTestCase
             'description' => 'description test 1'])->persist();
         BlogPostFactory::make(['id' => '1', 'blog_content_id' => '1', 'title' => 'blog post'])->persist();
         ContentFactory::make(['plugin' => 'BcBlog',
-        	'entity_id' => 1,
+            'entity_id' => 1,
             'status' => true,
             'lft' => 1,
             'rght' => 2,
             'type' => 'BlogContent'])
             ->treeNode(1, 1, null, 'test', '/test/', 1, true)->persist();
         $fullPath = BASER_PLUGINS . 'bc-front/templates/Blog/Blog/default';
-        if (!file_exists($fullPath)){
+        if (!file_exists($fullPath)) {
             mkdir($fullPath, recursive: true);
         }
-        $file = new File($fullPath .DS. 'index.php');
+        $file = new BcFile($fullPath . DS . 'index.php');
         $file->write('html');
-        $file->close();
         //正常系実行
         $request = $this->getRequest()->withAttribute('currentContent', ContentFactory::get(1));
         $controller = new BlogController($request);
@@ -118,8 +118,12 @@ class BlogControllerTest extends BcTestCase
 
         $controller->index($blogFrontService, $blogContentsService, $blogPostsService);
         $vars = $controller->viewBuilder()->getVars();
-        unlink($fullPath.DS.'index.php');
+        unlink($fullPath . DS . 'index.php');
         $this->assertEquals('description test 1', $vars['blogContent']->description);
+
+        //不要フォルダを削除
+        (new BcFolder(BASER_PLUGINS . 'bc-front/templates/Blog'))->delete();
+
         //異常系実行
         $request = $this->getRequest()->withAttribute('currentContent', null);
         $controller = new BlogController($request);

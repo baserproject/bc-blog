@@ -22,6 +22,7 @@ use Cake\Validation\Validator;
 use BaserCore\Annotation\NoTodo;
 use BaserCore\Annotation\Checked;
 use BaserCore\Annotation\UnitTest;
+use SoftDelete\ORM\SelectQuery;
 
 /**
  * BlogCategoriesTable
@@ -130,15 +131,18 @@ class BlogCategoriesTable extends BlogAppTable
      *
      * @param boolean $cascade
      * @return void
+     * @notodo
+     * @checked
+     * @unitTest
      */
     public function beforeDelete(EventInterface $event, EntityInterface $entity, \ArrayObject $options)
     {
-        $this->BlogPosts->find()
-            ->where(['BlogPosts.blog_category_id' => $entity->id])
-            ->each(function ($blogPost) {
-                $blogPost->blog_category_id = '';
-                $this->BlogPosts->save($blogPost);
-            });
+        $blogPosts = $this->BlogPosts->find()
+            ->where(['BlogPosts.blog_category_id' => $entity->id])->toArray();
+        foreach ($blogPosts as $item) {
+            $item->blog_category_id = '';
+            $this->BlogPosts->save($item);
+        }
     }
 
     /**
@@ -235,9 +239,6 @@ class BlogCategoriesTable extends BlogAppTable
         } elseif ($parentId !== false) {    // 親を指定する場合
             $conditions['BlogCategories.parent_id'] = $parentId;
         }
-        if ($options['siteId'] !== false && !is_null($options['siteId'])) {
-            $conditions['Contents.site_id'] = $options['siteId'];
-        }
         if (!is_null($blogContentId)) {
             $conditions['BlogCategories.blog_content_id'] = $blogContentId;
         }
@@ -264,9 +265,14 @@ class BlogCategoriesTable extends BlogAppTable
             ->contain(['BlogPosts' => ['BlogContents' => ['Contents']]])
             ->where($conditions)
             ->select($fields)
-            ->order($options['order']);
+            ->orderBy($options['order']);
         if ($distinct) {
             $query->distinct($distinct);
+        }
+        if ($options['siteId'] !== false && !is_null($options['siteId'])) {
+            $query->matching('BlogPosts.BlogContents.Contents', function ($q) use ($options) {
+                return $q->where(['Contents.site_id' => $options['siteId']]);
+            });
         }
         $entities = $query->all();
 
@@ -275,7 +281,7 @@ class BlogCategoriesTable extends BlogAppTable
             foreach ($entities as $entity) {
                 // 表示件数
                 if ($viewCount) {
-                    $childrenIds = $this->find('list', ['keyField' => 'id', 'valueField' => 'id'])
+                    $childrenIds = $this->find('list', keyField: 'id', valueField: 'id')
                         ->where([
                             ['BlogCategories.lft > ' => $entity->lft],
                             ['BlogCategories.rght < ' => $entity->rght]
@@ -338,10 +344,12 @@ class BlogCategoriesTable extends BlogAppTable
      * @return bool
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function hasChild($id)
     {
-        return (bool)$this->childCount($id);
+        $entity = $this->find()->where(['id' => $id])->first();
+        return (bool)$this->childCount($entity);
     }
 
     /**
@@ -350,21 +358,23 @@ class BlogCategoriesTable extends BlogAppTable
      * @param int $blogContentId
      * @param string $name
      * @param array $options
-     * @return array|null
+     * @return EntityInterface
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getByName($blogContentId, $name, $options = [])
     {
         $options = array_merge([
             'conditions' => [
-                'BlogCategory.blog_content_id' => $blogContentId,
-                'BlogCategory.name' => urlencode($name),
+                'BlogCategories.blog_content_id' => $blogContentId,
+                'BlogCategories.name' => urlencode($name),
             ],
             'recursive' => -1
         ], $options);
-        $this->unbindModel(['hasMany' => ['BlogPost']]);
-        return $this->find('first', $options);
-    }
+        return $this->find('all', $options)->first();
 
+    }
     /**
      * コピーする
      *
@@ -412,5 +422,19 @@ class BlogCategoriesTable extends BlogAppTable
         } catch (\Throwable $e) {
             throw $e;
         }
+    }
+
+    /**
+     * 親カテゴリを取得する
+     * @param $parent_id
+     * @return EntityInterface
+     *
+     * @checked
+     * @noTodo
+     * @unitTest
+     */
+    public function getParent($parent_id)
+    {
+        return $this->find()->where(['id' => $parent_id])->first();
     }
 }

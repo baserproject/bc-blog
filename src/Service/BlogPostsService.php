@@ -106,9 +106,10 @@ class BlogPostsService implements BlogPostsServiceInterface
             $conditions = $this->BlogPosts->getConditionAllowPublish();
             $conditions = array_merge($conditions, $this->BlogPosts->BlogContents->Contents->getConditionAllowPublish());
         }
-        $entity = $this->BlogPosts->get($id, [
-            'conditions' => $conditions,
-            'contain' => $options['contain']]);
+        $entity = $this->BlogPosts->get($id,
+            conditions: $conditions,
+            contain: $options['contain']
+        );
         if ($options['draft'] === false) {
             unset($entity->content_draft);
             unset($entity->detail_draft);
@@ -152,10 +153,12 @@ class BlogPostsService implements BlogPostsServiceInterface
         unset($options['num'], $options['sort']);
 
         if ($options['id'] || $options['no']) $options['contain'][] = 'BlogComments';
+        if ($options['contain'] == null)
+            $options['contain'] = [];
         $query = $this->BlogPosts->find()->contain($options['contain']);
 
         if ($options['order']) {
-            $query->order($this->createOrder($options['order'], $options['direction']));
+            $query->orderBy($this->createOrder($options['order'], $options['direction']));
             unset($options['order'], $options['direction']);
         }
         if (!empty($options['limit'])) {
@@ -176,6 +179,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @param string $direction
      * @return string
      * @checked
+     * @unitTest
      */
     public function createOrder($sort, $direction)
     {
@@ -416,17 +420,16 @@ class BlogPostsService implements BlogPostsServiceInterface
             $query = $this->BlogPosts->BlogContents->Contents->find()
                 ->select(['Contents.entity_id']);
 
-            // $contentUrl が配列の場合は IN 句を使う
             if (is_array($contentUrl)) {
                 $query->where(['Contents.url IN' => $contentUrl]);
             } else {
                 $query->where(['Contents.url' => $contentUrl]);
             }
-            // find() で取得した entity_id を配列で取得
+
             $entityIds = Hash::extract($query->toArray(), '{n}.entity_id');
-            if (count($entityIds) > 1) { // $contentUrlが配列の場合
+            if (count($entityIds) > 1) {
                 $categoryConditions['BlogCategories.blog_content_id IN'] = $entityIds;
-            } elseif(count($entityIds) === 1) { // $contentUrlが文字列の場合
+            } elseif(count($entityIds) === 1) {
                 $categoryConditions['BlogCategories.blog_content_id'] = $entityIds[0];
             }
         } elseif (!$force) {
@@ -565,7 +568,7 @@ class BlogPostsService implements BlogPostsServiceInterface
     {
         return $this->BlogPosts->newEntity([
             'user_id' => $userId,
-            'posted' => FrozenTime::now(),
+            'posted' => \Cake\I18n\DateTime::now(),
             'status' => false,
             'blog_content_id' => $blogContentId
         ]);
@@ -978,6 +981,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getUrl(Content $content, BlogPost $post, $full)
     {

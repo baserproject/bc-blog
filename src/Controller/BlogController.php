@@ -65,9 +65,10 @@ class BlogController extends BlogFrontAppController
     public function beforeFilter(EventInterface $event)
     {
         $response = parent::beforeFilter($event);
-        if ($response) return $response;
-        // TODO ブログコメントの送信でエラーとなるため、一時的に無効化している
-        $this->Security->setConfig('validatePost', false);
+        if($response) return $response;
+        // コメント送信用のトークンを出力する為にセキュリティコンポーネントを利用しているが、
+        // 表示用のコントローラーなのでポストデータのチェックは必要ない
+        $this->FormProtection->setConfig('validate', false);
     }
 
     /**
@@ -95,7 +96,7 @@ class BlogController extends BlogFrontAppController
             ['status' => 'publish']
         );
 
-        if ($this->RequestHandler->prefers('rss')) {
+        if ($this->getRequest()->is('rss')) {
             $listCount = $blogContent->feed_count;
         } else {
             $listCount = $blogContent->list_count;
@@ -123,7 +124,7 @@ class BlogController extends BlogFrontAppController
             return $this->redirect(['action' => 'index']);
         }
 
-        if ($this->RequestHandler->prefers('rss')) {
+        if ($this->getRequest()->is('rss')) {
             $this->set($service->getViewVarsForIndexRss(
                 $this->getRequest(),
                 $blogContent,

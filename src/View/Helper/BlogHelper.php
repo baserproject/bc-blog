@@ -19,6 +19,7 @@ use BaserCore\Service\ContentsServiceInterface;
 use BaserCore\Service\SitesService;
 use BaserCore\Service\SitesServiceInterface;
 use BaserCore\Utility\BcContainerTrait;
+use BaserCore\Utility\BcFolder;
 use BaserCore\Utility\BcUtil;
 use BaserCore\View\Helper\BcBaserHelper;
 use BaserCore\View\Helper\BcContentsHelper;
@@ -41,7 +42,6 @@ use Cake\Core\Configure;
 use Cake\Datasource\EntityInterface;
 use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\Datasource\ResultSetInterface;
-use Cake\Filesystem\Folder;
 use Cake\ORM\TableRegistry;
 use Cake\Utility\Hash;
 use Cake\View\Helper;
@@ -57,6 +57,7 @@ use BaserCore\Annotation\UnitTest;
  * @property BcUploadHelper $BcUpload BcUploadヘルパ
  * @property BcContentsHelper $BcContents BcContentsヘルパ
  * @property Helper\HtmlHelper $Html
+ * @property Helper\UrlHelper $Url
  */
 class BlogHelper extends Helper
 {
@@ -72,7 +73,7 @@ class BlogHelper extends Helper
      *
      * @var array
      */
-    public $helpers = [
+    public array $helpers = [
         'Html',
         'Url',
         'BaserCore.BcTime',
@@ -131,6 +132,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function setContent($blogContentId = null)
     {
@@ -190,6 +192,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function currentBlogId()
     {
@@ -202,6 +205,7 @@ class BlogHelper extends Helper
      * @return integer
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getCurrentBlogId()
     {
@@ -214,6 +218,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function blogName()
     {
@@ -226,6 +231,7 @@ class BlogHelper extends Helper
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getBlogName()
     {
@@ -238,6 +244,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function title()
     {
@@ -250,6 +257,7 @@ class BlogHelper extends Helper
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getTitle()
     {
@@ -262,6 +270,7 @@ class BlogHelper extends Helper
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getDescription()
     {
@@ -274,6 +283,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function description()
     {
@@ -286,6 +296,7 @@ class BlogHelper extends Helper
      * @return boolean
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function descriptionExists()
     {
@@ -304,6 +315,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function postTitle(BlogPost $post, bool $link = true, array $options = []): void
     {
@@ -321,6 +333,7 @@ class BlogHelper extends Helper
      * @return string 記事タイトル
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getPostTitle($post, $link = true, $options = [])
     {
@@ -348,6 +361,7 @@ class BlogHelper extends Helper
      * @return string 記事へのリンク
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getPostLink($post, $title, $options = [])
     {
@@ -421,6 +435,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function postLink($post, $title, $options = [])
     {
@@ -440,6 +455,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function postContent(
         BlogPost $post,
@@ -465,6 +481,7 @@ class BlogHelper extends Helper
      * @return string 記事本文
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getPostContent(
         BlogPost $post,
@@ -483,7 +500,7 @@ class BlogHelper extends Helper
                 $out = mb_substr(strip_tags($out), 0, $cut, 'UTF-8');
             }
         } else {
-            $out = $this->BcBaser->getElement('blog_post_content', [
+            $out = $this->BcBaser->getElement('BcBlog.blog_post_content', [
                 'moreText' => $moreText,
                 'useContent' => $this->currentBlogContent->use_content,
                 'post' => $post
@@ -491,7 +508,7 @@ class BlogHelper extends Helper
         }
         if ($moreLink && trim($post->detail) != "<br>") {
             if ($moreLink === true) $moreLink = __d('baser_core', '≫ 続きを読む');
-            $out .= $this->BcBaser->getElement('blog_post_content_more', [
+            $out .= $this->BcBaser->getElement('BcBlog.blog_post_content_more', [
                 'moreLink' => $moreLink,
                 'post' => $post
             ]);
@@ -507,6 +524,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function postDetail(BlogPost $post, array $options = [])
     {
@@ -522,6 +540,7 @@ class BlogHelper extends Helper
      * @return string 記事本文
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getPostDetail(BlogPost $post, array $options = [])
     {
@@ -548,6 +567,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function category(BlogPost $post, array $options = [])
     {
@@ -601,6 +621,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function tag($post, $separator = ' , ')
     {
@@ -622,6 +643,7 @@ class BlogHelper extends Helper
      * @return mixed ''|string|array
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getTag($post, $options = [])
     {
@@ -679,6 +701,7 @@ class BlogHelper extends Helper
      * @return string カテゴリ一覧へのURL
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getCategoryUrl($blogCategoryId, $options = [])
     {
@@ -688,7 +711,7 @@ class BlogHelper extends Helper
         ], $options);
         $blogCategoriesTable = TableRegistry::getTableLocator()->get('BcBlog.BlogCategories');
         $blogCategory = $blogCategoriesTable->get($blogCategoryId);
-        $categoryPath = $blogCategoriesTable->find('path', ['for' => $blogCategoryId]);
+        $categoryPath = $blogCategoriesTable->find('path', for: $blogCategoryId);
         $blogContentId = $blogCategory->blog_content_id;
         $this->setContent($blogContentId);
         $sitesTable = TableRegistry::getTableLocator()->get('BaserCore.Sites');
@@ -723,6 +746,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function postDate(BlogPost $post, string $format = 'Y/m/d')
     {
@@ -737,6 +761,7 @@ class BlogHelper extends Helper
      * @return string 登録日
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getPostDate(BlogPost $post, $format = 'Y/m/d')
     {
@@ -753,6 +778,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function author(BlogPost $post)
     {
@@ -772,6 +798,7 @@ class BlogHelper extends Helper
      * @return string HTMLのカテゴリ一覧
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getCategoryList($categories, $depth = 3, $count = false, $options = [])
     {
@@ -801,6 +828,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function prevLink(BlogPost $post, string $title = '', array $htmlAttributes = [])
     {
@@ -823,6 +851,7 @@ class BlogHelper extends Helper
      * @return bool
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function hasPrevLink(BlogPost $post)
     {
@@ -843,6 +872,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function nextLink(BlogPost $post, string $title = '', array $htmlAttributes = [])
     {
@@ -865,6 +895,7 @@ class BlogHelper extends Helper
      * @return bool
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function hasNextLink($post)
     {
@@ -883,20 +914,21 @@ class BlogHelper extends Helper
      * @return array ブログテンプレート一覧
      * @checked
      * @noTodo
+     * @unitTest
      */
-    public function getBlogTemplates($siteId = 0)
+    public function getBlogTemplates($siteId = 1)
     {
         $templatesPaths = BcUtil::getFrontTemplatePaths($siteId, 'BcBlog');
         $_templates = [];
         foreach($templatesPaths as $templatePath) {
             $templatePath .= 'Blog' . DS;
-            $folder = new Folder($templatePath);
-            $files = $folder->read(true, true);
-            if ($files[0]) {
+            $folder = new BcFolder($templatePath);
+            $files = $folder->getFolders();
+            if ($files) {
                 if ($_templates) {
-                    $_templates = array_merge($_templates, $files[0]);
+                    $_templates = array_merge($_templates, $files);
                 } else {
-                    $_templates = $files[0];
+                    $_templates = $files;
                 }
             }
         }
@@ -942,6 +974,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function postImg($post, $options = [])
     {
@@ -960,6 +993,7 @@ class BlogHelper extends Helper
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getPostImg($post, $options = [])
     {
@@ -985,13 +1019,16 @@ class BlogHelper extends Helper
 
         if (isset($matches[1][$num - 1])) {
             $url = $matches[1][$num - 1];
-            $url = preg_replace('/^' . preg_quote($this->base, '/') . '/', '', $url);
+            if (!is_null($this->base)){
+                $url = preg_replace('/^' . preg_quote($this->base, '/') . '/', '', $url);
+            }
+
             if ($output == 'url') {
                 return $url; // 出力形式 が urlなら、URLを返す
             }
             $img = $this->BcBaser->getImg($url, $options);
             if ($link) {
-                return $this->BcBaser->getLink($img, $this->currentContent->url . 'archives/' . $post->no);
+                return $this->BcBaser->getLink($img, $this->currentContent->url . 'archives/' . $post->no, ['escape' => false]);
             } else {
                 return $img;
             }
@@ -1008,6 +1045,7 @@ class BlogHelper extends Helper
      * @return string 指定したIDの内容
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getHtmlById($post, $id)
     {
@@ -1024,15 +1062,19 @@ class BlogHelper extends Helper
      * 親カテゴリを取得する
      *
      * @param array $post ブログ記事
-     * @return array $parentCategory 親カテゴリ
+     * @return EntityInterface $parentCategory 親カテゴリ
+     *
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getParentCategory($post)
     {
         if (empty($post->blog_category->id)) {
             return null;
         }
-        $BlogCategory = ClassRegistry::init('BcBlog.BlogCategory');
-        return $BlogCategory->getParentNode($post->blog_category->id);
+        $blogCategory = TableRegistry::getTableLocator()->get('BcBlog.BlogCategories');
+        return $blogCategory->getParent($post->blog_category->parent_id);
     }
 
     /**
@@ -1060,6 +1102,7 @@ class BlogHelper extends Helper
      * @return string ブログのアーカイブタイプ
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getBlogArchiveType()
     {
@@ -1076,6 +1119,7 @@ class BlogHelper extends Helper
      * @return boolean 現在のページがアーカイブページの場合は true を返す
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function isArchive()
     {
@@ -1088,6 +1132,7 @@ class BlogHelper extends Helper
      * @return boolean 現在のページがカテゴリー別記事一覧ページの場合は true を返す
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function isCategory()
     {
@@ -1100,6 +1145,7 @@ class BlogHelper extends Helper
      * @return boolean 現在のページがタグ別記事一覧ページの場合は true を返す
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function isTag()
     {
@@ -1112,6 +1158,7 @@ class BlogHelper extends Helper
      * @return boolean 現在のページが日別記事一覧ページの場合は true を返す
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function isDate()
     {
@@ -1124,6 +1171,7 @@ class BlogHelper extends Helper
      * @return boolean 現在のページが月別記事一覧ページの場合は true を返す
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function isMonth()
     {
@@ -1136,6 +1184,7 @@ class BlogHelper extends Helper
      * @return boolean 現在のページが年別記事一覧ページの場合は true を返す
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function isYear()
     {
@@ -1148,6 +1197,7 @@ class BlogHelper extends Helper
      * @return boolean 現在のページが個別ページの場合は true を返す
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function isSingle()
     {
@@ -1156,8 +1206,7 @@ class BlogHelper extends Helper
         }
         return ($this->_View->getRequest()->getParam('plugin') == 'BcBlog' &&
             $this->_View->getRequest()->getParam('controller') == 'Blog' &&
-            $this->_View->getRequest()->getParam('action') == 'archives' &&
-            !$this->getBlogArchiveType());
+            $this->_View->getRequest()->getParam('action') == 'archives' && !$this->getBlogArchiveType());
     }
 
     /**
@@ -1166,6 +1215,7 @@ class BlogHelper extends Helper
      * @return boolean 現在のページがインデックスページの場合は true を返す
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function isHome()
     {
@@ -1195,6 +1245,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function eyeCatch(BlogPost $post, array $options = [])
     {
@@ -1264,8 +1315,10 @@ class BlogHelper extends Helper
 
     /**
      * 文字列から制御文字を取り除く
+     * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function removeCtrlChars($string)
     {
@@ -1309,6 +1362,7 @@ class BlogHelper extends Helper
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getCategoryName(BlogPost $post)
     {
@@ -1326,6 +1380,7 @@ class BlogHelper extends Helper
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getCategoryTitle(BlogPost $post)
     {
@@ -1343,6 +1398,7 @@ class BlogHelper extends Helper
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getPostId(BlogPost $post)
     {
@@ -1360,6 +1416,7 @@ class BlogHelper extends Helper
      * @return mixed
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getCategories($options = [])
     {
@@ -1398,6 +1455,8 @@ class BlogHelper extends Helper
      * @return array|null
      * @checked
      * @noTodo
+     * @checked
+     * @unitTest
      */
     public function getTagList($name, $options = [])
     {
@@ -1439,6 +1498,7 @@ class BlogHelper extends Helper
      *    ※ オプションのパラーメーターは、BlogHelper::getTagList() に準ずる
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function tagList($name, $options = [])
     {
@@ -1481,6 +1541,7 @@ class BlogHelper extends Helper
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getTagLinkUrl($blogContentId, $tag, $base = true)
     {
@@ -1519,6 +1580,7 @@ class BlogHelper extends Helper
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getTagLink($blogContentId, $tag, $options = [])
     {
@@ -1535,6 +1597,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest ラッパーメソッドのためユニットテストはスキップする
      */
     public function tagLink($blogContentId, $tag, $options = [])
     {
@@ -1548,6 +1611,7 @@ class BlogHelper extends Helper
      * @return array
      * @checked
      * @noTodo
+     * @unitTest
      */
     private function _mergePostCountToTagsData(ResultSetInterface $tags, $options)
     {
@@ -1565,14 +1629,15 @@ class BlogHelper extends Helper
             /** @var BlogContentsService $blogContentsService */
             $blogContentsService = $this->getService(BlogContentsServiceInterface::class);
             $blogContents = $blogContentsService->BlogContents->find()
-                ->select(['BlogContent.id'])
+                ->select(['BlogContents.id'])
+                ->contain(['Contents'])
                 ->where(array_merge(
-                    $blogContentsService->BlogContents->Content->getConditionAllowPublish(),
-                    ['Contents.url' => $options['contentUrl']]
+                    $blogContentsService->BlogContents->Contents->getConditionAllowPublish(),
+                    ['Contents.url IN' => $options['contentUrl']]
                 ))->all();
             $blogContentIds = Hash::extract($blogContents->toArray(), "{n}.id");
         }
-        if (!empty($blogContentIds)) $conditions[] = ['BlogPosts.blog_content_id' => $blogContentIds];
+        if (!empty($blogContentIds)) $conditions[] = ['BlogPosts.blog_content_id IN' => $blogContentIds];
 
         $tagIds = [];
         if (!empty($conditions['BlogTags.id IN'])) {
@@ -1583,7 +1648,7 @@ class BlogHelper extends Helper
         $query = $blogPostsService->BlogPosts->find()
             ->where($conditions)
             ->leftJoinWith('BlogTags')
-            ->group(['BlogTags.id'])
+            ->groupBy(['BlogTags.id'])
             ->select(['BlogTags.id']);
         $query = $query->select([
             'post_count' => $query->func()->count('BlogPosts.id')
@@ -1654,6 +1719,7 @@ class BlogHelper extends Helper
      * @return void
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function posts($contentsName = [], $num = 5, $options = [])
     {
@@ -1694,10 +1760,8 @@ class BlogHelper extends Helper
         if($this->currentBlogContent) {
             $currentBlogContentId = $this->currentBlogContent->id;
         }
-
         if (isset($blogContent->id))
             $this->setContent($blogContent->id);
-
         $this->BcBaser->element($template, $data);
 
         if($currentBlogContentId) {
@@ -1715,6 +1779,7 @@ class BlogHelper extends Helper
      * @return mixed
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getPosts($contentsName = [], $num = 5, $options = [])
     {
@@ -1736,6 +1801,7 @@ class BlogHelper extends Helper
      * @return mixed
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function parseContentName($contentsName, $options)
     {
@@ -1767,6 +1833,7 @@ class BlogHelper extends Helper
                 $options['contentUrl'] = $currentContent->url;
             }
         }
+        unset($options['autoSetCurrentBlog']);
         return $options;
     }
 
@@ -1856,7 +1923,7 @@ class BlogHelper extends Helper
             $BlogPost->getConditionAllowPublish()
         );
 
-        $postCountsData = $BlogPost->find('all', [
+        $postCountsData = $BlogPost->find('all', ...[
             'fields' => [
                 'BlogPost.blog_content_id',
                 'COUNT(BlogPost.id) as post_count',
@@ -1897,6 +1964,7 @@ class BlogHelper extends Helper
      * @return bool
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function isBlog()
     {
@@ -1912,6 +1980,7 @@ class BlogHelper extends Helper
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getContentsUrl(int $blogContentId, $base = true)
     {
@@ -1928,6 +1997,7 @@ class BlogHelper extends Helper
      * @return bool
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function isSameSiteBlogContent($blogContentId)
     {
@@ -1939,11 +2009,12 @@ class BlogHelper extends Helper
         $siteId = $content->site_id;
         $currentSiteId = 0;
 
+        $currentSite = $this->_View->getRequest()->getAttribute('currentSite');
         if (!empty($this->currentContent->alias_id)) {
             $content = $contentsTable->get($this->currentContent->alias_id);
             $currentSiteId = $content->site_id;
-        } elseif ($this->_View->getRequest()->getAttribute('currentSite')->id) {
-            $currentSiteId = $this->_View->getRequest()->getAttribute('currentSite')->id;
+        } elseif ($currentSite && $currentSite->id) {
+            $currentSiteId = $currentSite->id;
         }
         return ($currentSiteId == $siteId);
     }
@@ -1956,15 +2027,20 @@ class BlogHelper extends Helper
      * @param int $blogContentId
      * @param string $categoryName
      * @param array $options
-     * @return array
+     * @return EntityInterface
+     * @checked
+     * @noTodo
+     * @unitTest
      */
+
     public function getCategoryByName($blogContentId, $categoryName = '', $options = [])
     {
         if (!$categoryName && $this->getBlogArchiveType() === 'category') {
             $pass = $this->_View->getRequest()->getParam('pass');
             $categoryName = $pass[count($pass) - 1];
         }
-        return ClassRegistry::init('Blog.BlogCategory')->getByName($blogContentId, $categoryName, $options);
+        $blogCategoriesTable =  TableRegistry::getTableLocator()->get('BcBlog.BlogCategories');
+        return $blogCategoriesTable->getByName($blogContentId, $categoryName, $options);
     }
 
     /**
@@ -1986,14 +2062,15 @@ class BlogHelper extends Helper
      * 現在のブログタグアーカイブのブログタグ情報を取得する
      *
      * @return array
+     * @unitTest
      */
     public function getCurrentBlogTag()
     {
         $blogTag = [];
         if ($this->isTag()) {
             $pass = $this->_View->getRequest()->getParam('pass');
-            $name = isset($pass[1])? $pass[1] : '';
-            $BlogTagModel = ClassRegistry::init('Blog.BlogTag');
+            $name = isset($pass[1]) ? $pass[1] : '';
+            $BlogTagModel = TableRegistry::getTableLocator()->get('BcBlog.BlogTags');
             $blogTag = $BlogTagModel->getByName(rawurldecode($name));
         }
         return $blogTag;
