@@ -14,6 +14,7 @@ namespace BcBlog\Test\TestCase\Service;
 use BaserCore\Test\Factory\ContentFactory;
 use BaserCore\Test\Factory\SiteFactory;
 use BaserCore\Test\Factory\UserFactory;
+use BaserCore\Test\Scenario\InitAppScenario;
 use BaserCore\TestSuite\BcTestCase;
 use BaserCore\Utility\BcContainerTrait;
 use BcBlog\Service\BlogPostsService;
@@ -24,6 +25,7 @@ use BcBlog\Test\Factory\BlogPostBlogTagFactory;
 use BcBlog\Test\Factory\BlogPostFactory;
 use BcBlog\Test\Factory\BlogTagFactory;
 use BcBlog\Test\Scenario\BlogContentScenario;
+use BcBlog\Test\Scenario\BlogPostsAdminServiceScenario;
 use BcBlog\Test\Scenario\MultiSiteBlogScenario;
 use Cake\Datasource\Exception\RecordNotFoundException;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
@@ -220,7 +222,7 @@ class BlogPostsServiceTest extends BcTestCase
         $this->markTestIncomplete('こちらのテストはまだ未確認です');
         set_error_handler(function ($no, $str, $file, $line, $context) {
         });
-        $result = $this->BlogPost->find('all', $options);
+        $result = $this->BlogPost->find('all', ...$options);
         if ($type == 'count') {
             $this->assertEquals($expected, count($result));
         } elseif ($type == 'name') {
@@ -231,7 +233,7 @@ class BlogPostsServiceTest extends BcTestCase
         }
     }
 
-    public function findIndexDataProvider()
+    public static function findIndexDataProvider()
     {
         return [
             ['count', [], 6],                                            // 公開状態全件取得
@@ -410,23 +412,19 @@ class BlogPostsServiceTest extends BcTestCase
     }
 
     /**
-     * 作成者の条件を作成する
-     */
-    public function testCreateAuthorCondition()
-    {
-        //データ　生成
-        UserFactory::make(['id' => 1, 'name' => 'test name', 'email' => 'test_name@gmail.com'])->persist();
-        //戻り値を確認
-        $result = $this->BlogPostsService->createAuthorCondition([], "test name");
-        $this->assertEquals($result["BlogPosts.user_id"], 1);
-    }
-
-    /**
      * 並び替え設定を生成する
      */
     public function testCreateOrder()
     {
-        $this->markTestIncomplete('このテストは、まだ実装されていません。');
+        //昇順
+        $result = $this->BlogPostsService->createOrder('test', 'ASC');
+        $this->assertEquals('BlogPosts.test ASC, BlogPosts.id ASC', $result);
+        //降順
+        $result = $this->BlogPostsService->createOrder('test', 'DESC');
+        $this->assertEquals('BlogPosts.test DESC, BlogPosts.id DESC', $result);
+        //random
+        $result = $this->BlogPostsService->createOrder('test', 'random');
+        $this->assertEquals('RAND()', $result);
     }
 
     /**
@@ -451,7 +449,7 @@ class BlogPostsServiceTest extends BcTestCase
 //        $this->assertEquals($expected, $result);
 //    }
 //
-//    public function createIndexConditionsDataProvider(): array
+//    public static function createIndexConditionsDataProvider(): array
 //    {
 //        $blogPost = new BlogPostsTable();
 //        return [
@@ -582,14 +580,14 @@ class BlogPostsServiceTest extends BcTestCase
         BlogPostBlogTagFactory::make(['id' => 1, 'blog_post_id' => 1, 'blog_tag_id' => 1])->persist();
         BlogPostBlogTagFactory::make(['id' => 2, 'blog_post_id' => 2, 'blog_tag_id' => 1])->persist();
 
-        $blogPost = $this->BlogPostsService->BlogPosts->get(1, ['contain' => ['BlogTags']]);
+        $blogPost = $this->BlogPostsService->BlogPosts->get(1, contain: ['BlogTags']);
         $result = $this->BlogPostsService->getRelatedPosts($blogPost)->toArray();
         //戻り値を確認
         $this->assertEquals(1, $result[0]["blog_content_id"]);
         $this->assertEquals(2, $result[0]["id"]);
 
         //blog_tagsがNULLを確認すること
-        $blogPost = $this->BlogPostsService->BlogPosts->get(3, ['contain' => ['BlogTags']]);
+        $blogPost = $this->BlogPostsService->BlogPosts->get(3, contain: ['BlogTags']);
         $result = $this->BlogPostsService->getRelatedPosts($blogPost);
         //結果はnullになる
         $this->assertCount(0, $result);
@@ -611,7 +609,7 @@ class BlogPostsServiceTest extends BcTestCase
         $this->assertEquals("1", $result->user_id);
 
         //postedが生成できるか確認
-        $this->assertEquals(FrozenTime::now()->i18nFormat('yyyy-MM-dd'), $result->posted->i18nFormat('yyyy-MM-dd'));
+        $this->assertEquals(\Cake\I18n\DateTime::now()->i18nFormat('yyyy-MM-dd'), $result->posted->i18nFormat('yyyy-MM-dd'));
 
         //statusが生成できるか確認
         $this->assertEquals(false, $result->status);
@@ -955,7 +953,7 @@ class BlogPostsServiceTest extends BcTestCase
 
         // サービスメソッドを呼ぶ
         // test author1 の記事を取得、id昇順
-        $result = $this->BlogPostsService->getIndexByAuthor('test author1', [
+        $result = $this->BlogPostsService->getIndexByAuthor(2, [
             'direction' => 'ASC',
             'order' => 'id',
         ]);
@@ -974,7 +972,7 @@ class BlogPostsServiceTest extends BcTestCase
 
         // サービスメソッドを呼ぶ
         // 記事が存在しない
-        $result = $this->BlogPostsService->getIndexByAuthor('test author3', []);
+        $result = $this->BlogPostsService->getIndexByAuthor(4, []);
 
         // 戻り値を確認
         // 指定した author の記事が存在しない
@@ -1156,6 +1154,23 @@ class BlogPostsServiceTest extends BcTestCase
         $result = $this->BlogPostsService->getNextPost(BlogPostFactory::get(2));
         //戻り値を確認
         $this->assertNull($result);
+    }
+
+    /**
+     * test getUrl
+     */
+    public function test_getUrl()
+    {
+        $this->loadFixtureScenario(BlogPostsAdminServiceScenario::class);
+        $this->loadFixtureScenario(InitAppScenario::class);
+
+        //第３引き数が false の場合
+        $rs = $this->BlogPostsService->getUrl(ContentFactory::get(100), BlogPostFactory::get(1), false);
+        $this->assertEquals('/archives/1', $rs);
+
+        //第３引き数が true の場合
+        $rs = $this->BlogPostsService->getUrl(ContentFactory::get(100), BlogPostFactory::get(1), true);
+        $this->assertEquals('https://localhost/archives/1', $rs);
     }
 
 }
