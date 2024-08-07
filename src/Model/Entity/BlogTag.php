@@ -21,8 +21,8 @@ use Cake\ORM\Entity;
  * Class BlogTag
  * @property int $id
  * @property string $name
- * @property \Cake\I18n\DateTime $created
- * @property \Cake\I18n\DateTime $modified
+ * @property FrozenTime $created
+ * @property FrozenTime $modified
  */
 class BlogTag extends Entity
 {
@@ -32,7 +32,7 @@ class BlogTag extends Entity
      *
      * @var array
      */
-    protected array $_accessible = [
+    protected $_accessible = [
         '*' => true,
         'id' => false
     ];

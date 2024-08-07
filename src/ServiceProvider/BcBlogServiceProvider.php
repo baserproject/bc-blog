@@ -46,7 +46,7 @@ class BcBlogServiceProvider extends ServiceProvider
      * Provides
      * @var string[]
      */
-    protected array $provides = [
+    protected $provides = [
         BlogCategoriesServiceInterface::class,
         BlogCategoriesAdminServiceInterface::class,
         BlogContentsServiceInterface::class,

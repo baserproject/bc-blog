@@ -130,18 +130,15 @@ class BlogCategoriesTable extends BlogAppTable
      *
      * @param boolean $cascade
      * @return void
-     * @notodo
-     * @checked
-     * @unitTest
      */
     public function beforeDelete(EventInterface $event, EntityInterface $entity, \ArrayObject $options)
     {
-        $blogPosts = $this->BlogPosts->find()
-            ->where(['BlogPosts.blog_category_id' => $entity->id])->toArray();
-        foreach ($blogPosts as $item) {
-            $item->blog_category_id = '';
-            $this->BlogPosts->save($item);
-        }
+        $this->BlogPosts->find()
+            ->where(['BlogPosts.blog_category_id' => $entity->id])
+            ->each(function ($blogPost) {
+                $blogPost->blog_category_id = '';
+                $this->BlogPosts->save($blogPost);
+            });
     }
 
     /**
@@ -238,6 +235,9 @@ class BlogCategoriesTable extends BlogAppTable
         } elseif ($parentId !== false) {    // 親を指定する場合
             $conditions['BlogCategories.parent_id'] = $parentId;
         }
+        if ($options['siteId'] !== false && !is_null($options['siteId'])) {
+            $conditions['Contents.site_id'] = $options['siteId'];
+        }
         if (!is_null($blogContentId)) {
             $conditions['BlogCategories.blog_content_id'] = $blogContentId;
         }
@@ -264,14 +264,9 @@ class BlogCategoriesTable extends BlogAppTable
             ->contain(['BlogPosts' => ['BlogContents' => ['Contents']]])
             ->where($conditions)
             ->select($fields)
-            ->orderBy($options['order']);
+            ->order($options['order']);
         if ($distinct) {
             $query->distinct($distinct);
-        }
-        if ($options['siteId'] !== false && !is_null($options['siteId'])) {
-            $query->matching('BlogPosts.BlogContents.Contents', function ($q) use ($options) {
-                return $q->where(['Contents.site_id' => $options['siteId']]);
-            });
         }
         $entities = $query->all();
 
@@ -280,7 +275,7 @@ class BlogCategoriesTable extends BlogAppTable
             foreach ($entities as $entity) {
                 // 表示件数
                 if ($viewCount) {
-                    $childrenIds = $this->find('list', keyField: 'id', valueField: 'id')
+                    $childrenIds = $this->find('list', ['keyField' => 'id', 'valueField' => 'id'])
                         ->where([
                             ['BlogCategories.lft > ' => $entity->lft],
                             ['BlogCategories.rght < ' => $entity->rght]
@@ -343,12 +338,10 @@ class BlogCategoriesTable extends BlogAppTable
      * @return bool
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function hasChild($id)
     {
-        $entity = $this->find()->where(['id' => $id])->first();
-        return (bool)$this->childCount($entity);
+        return (bool)$this->childCount($id);
     }
 
     /**
@@ -357,23 +350,21 @@ class BlogCategoriesTable extends BlogAppTable
      * @param int $blogContentId
      * @param string $name
      * @param array $options
-     * @return EntityInterface
-     * @checked
-     * @noTodo
-     * @unitTest
+     * @return array|null
      */
     public function getByName($blogContentId, $name, $options = [])
     {
         $options = array_merge([
             'conditions' => [
-                'BlogCategories.blog_content_id' => $blogContentId,
-                'BlogCategories.name' => urlencode($name),
+                'BlogCategory.blog_content_id' => $blogContentId,
+                'BlogCategory.name' => urlencode($name),
             ],
             'recursive' => -1
         ], $options);
-        return $this->find('all', $options)->first();
-
+        $this->unbindModel(['hasMany' => ['BlogPost']]);
+        return $this->find('first', $options);
     }
+
     /**
      * コピーする
      *
@@ -421,19 +412,5 @@ class BlogCategoriesTable extends BlogAppTable
         } catch (\Throwable $e) {
             throw $e;
         }
-    }
-
-    /**
-     * 親カテゴリを取得する
-     * @param $parent_id
-     * @return EntityInterface
-     *
-     * @checked
-     * @noTodo
-     * @unitTest
-     */
-    public function getParent($parent_id)
-    {
-        return $this->find()->where(['id' => $parent_id])->first();
     }
 }

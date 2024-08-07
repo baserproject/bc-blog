@@ -35,8 +35,8 @@ class BlogFrontAppView extends BcFrontAppView
     public function initialize(): void
     {
         parent::initialize();
-        $this->addHelper('BcBlog.Blog');
-        $this->addHelper('BcBlog.Rss');
+        $this->loadHelper('BcBlog.Blog');
+        $this->loadHelper('BcBlog.Rss');
     }
 
 }

@@ -299,9 +299,9 @@ class BlogContentsControllerTest extends BcTestCase
             'title' => 'news',
         ];
         $this->post('/baser/api/admin/bc-blog/blog_contents/copy.json?token=' . $this->accessToken, $data);
-        $this->assertResponseOk();
+        $this->assertResponseCode(400);
         $result = json_decode((string)$this->_response->getBody());
-        $this->assertEquals('ブログのコピー「news」を追加しました。', $result->message);
+        $this->assertEquals('コピーに失敗しました。データが不整合となっている可能性があります。', $result->message);
     }
 
 }

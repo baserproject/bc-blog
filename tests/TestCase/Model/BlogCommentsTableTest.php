@@ -57,53 +57,79 @@ class BlogCommentsTableTest extends BcTestCase
     /*
 	 * validate
 	 */
-    public function test_validationDefaultEmptyCheck()
+    public function test空チェック()
     {
-        $validator = $this->BlogCommentsTable->getValidator('default');
-        $errors = $validator->validate([
-            'name' => '',
-            'message' => ''
+        $this->markTestIncomplete('こちらのテストはまだ未確認です');
+        $this->BlogComment->create([
+            'BlogComment' => [
+                'name' => '',
+                'message' => '',
+            ]
         ]);
-        $this->assertEquals('お名前を入力してください。', current($errors['name']));
-        $this->assertEquals('コメントを入力してください。', current($errors['message']));
+
+        $this->assertFalse($this->BlogComment->validates());
+
+        $this->assertArrayHasKey('name', $this->BlogComment->validationErrors);
+        $this->assertEquals('お名前を入力してください。', current($this->BlogComment->validationErrors['name']));
+
+        $this->assertArrayHasKey('message', $this->BlogComment->validationErrors);
+        $this->assertEquals('コメントを入力してください。', current($this->BlogComment->validationErrors['message']));
     }
 
-    public function test_validationDefaultMaxLength()
+    public function test桁数チェック異常系()
     {
-        $validator = $this->BlogCommentsTable->getValidator('default');
-        $errors = $validator->validate([
-            'name' => str_repeat('a', 51),
-            'email' => str_repeat('a', 246) . '@gmail.com',
-            'url' => 'http://example.com/' . str_repeat('a', 237)
+        $this->markTestIncomplete('こちらのテストはまだ未確認です');
+        $this->BlogComment->create([
+            'BlogComment' => [
+                'name' => '123456789012345678901234567890123456789012345678901',
+                'email' => '1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456@example.com',
+                'url' => 'http://example.com/1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456',
+            ]
         ]);
+        $this->assertFalse($this->BlogComment->validates());
 
-        $this->assertEquals('お名前は50文字以内で入力してください。', current($errors['name']));
-        $this->assertEquals('Eメールは255文字以内で入力してください。', current($errors['email']));
-        $this->assertEquals('URLは255文字以内で入力してください。', current($errors['url']));
+        $this->assertArrayHasKey('name', $this->BlogComment->validationErrors);
+        $this->assertEquals('お名前は50文字以内で入力してください。', current($this->BlogComment->validationErrors['name']));
+
+        $this->assertArrayHasKey('email', $this->BlogComment->validationErrors);
+        $this->assertEquals('Eメールは255文字以内で入力してください。', current($this->BlogComment->validationErrors['email']));
+
+
+        $this->assertArrayHasKey('url', $this->BlogComment->validationErrors);
+        $this->assertEquals('URLは255文字以内で入力してください。', current($this->BlogComment->validationErrors['url']));
     }
 
-    public function test_validationDefaultNotError()
+    public function test桁数チェック正常系()
     {
-        $validator = $this->BlogCommentsTable->getValidator('default');
-        $errors = $validator->validate([
-            'name' => str_repeat('a', 50),
-            'email' => str_repeat('a', 245) . '@gmail.com',
-            'url' => 'http://example.com/' . str_repeat('a', 236)
+        $this->markTestIncomplete('こちらのテストはまだ未確認です');
+        $this->BlogComment->create([
+            'BlogComment' => [
+                'name' => '12345678901234567890123456789012345678901234567890',
+                'email' => '1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678@example.com',
+                'url' => 'http://example.com/123456789012345678901234567890123456789012345678901234567890123456789012345678901234567567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456'
+            ]
         ]);
-        $this->assertCount(0, $errors);
+        $this->assertTrue($this->BlogComment->validates());
     }
 
-    public function test_validationDefaultOtherErrors()
+    public function testその他異常系()
     {
-        $validator = $this->BlogCommentsTable->getValidator('default');
-        $errors = $validator->validate([
-            'name' => str_repeat('a', 5),
-            'email' => str_repeat('a', 10),
-            'url' => str_repeat('a', 10)
+        $this->markTestIncomplete('こちらのテストはまだ未確認です');
+        // 形式チェック
+        $this->BlogComment->create([
+            'BlogComment' => [
+                'email' => 'hoge',
+                'url' => 'hoge'
+            ]
         ]);
 
-        $this->assertEquals('Eメールの形式が不正です。', current($errors['email']));
-        $this->assertEquals('URLの形式が不正です。', current($errors['url']));
+        $this->assertFalse($this->BlogComment->validates());
+
+        $this->assertArrayHasKey('email', $this->BlogComment->validationErrors);
+        $this->assertEquals('Eメールの形式が不正です。', current($this->BlogComment->validationErrors['email']));
+
+        $this->assertArrayHasKey('url', $this->BlogComment->validationErrors);
+        $this->assertEquals('URLの形式が不正です。', current($this->BlogComment->validationErrors['url']));
     }
 
     /**

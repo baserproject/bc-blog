@@ -14,7 +14,6 @@ namespace BcBlog\Service\Front;
 use BcBlog\Model\Entity\BlogContent;
 use Cake\Controller\Controller;
 use Cake\Datasource\EntityInterface;
-use Cake\Datasource\Paging\PaginatedResultSet;
 use Cake\Http\ServerRequest;
 use BaserCore\Annotation\UnitTest;
 use BaserCore\Annotation\NoTodo;
@@ -36,7 +35,7 @@ interface BlogFrontServiceInterface
      * @noTodo
      * @unitTest
      */
-    public function getViewVarsForIndex(ServerRequest $request, BlogContent $blogContent, PaginatedResultSet $posts): array;
+    public function getViewVarsForIndex(ServerRequest $request, BlogContent $blogContent, ResultSet $posts): array;
 
     /**
      * プレビュー用のセットアップをする
@@ -83,14 +82,14 @@ interface BlogFrontServiceInterface
 
     /**
      * 著者別アーカイブ一覧の view 用変数を取得する
-     * @param ResultSet|PaginatedResultSet $posts
-     * @param int $userId
+     * @param ResultSet $posts
+     * @param string $author
      * @return array
      * @checked
      * @noTodo
      * @unitTest
      */
-    public function getViewVarsForArchivesByAuthor(ResultSet|PaginatedResultSet $posts, int $userId, BlogContent $blogContent): array;
+    public function getViewVarsForArchivesByAuthor(ResultSet $posts, string $author, BlogContent $blogContent): array;
 
     /**
      * タグ別アーカイブ一覧の view 用変数を取得する

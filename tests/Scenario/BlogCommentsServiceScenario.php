@@ -33,11 +33,10 @@ class BlogCommentsServiceScenario implements FixtureScenarioInterface
     /**
      * load
      */
-    public function load(...$args): mixed
+    public function load(...$args)
     {
         BlogPostFactory::make(['id' => 1, 'blog_content_id' => 1])->persist();
         $this->loadFixtureScenario(BlogCommentsScenario::class);
-        return null;
     }
 
 }

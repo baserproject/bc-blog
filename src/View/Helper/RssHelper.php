@@ -13,9 +13,6 @@ namespace BcBlog\View\Helper;
 
 use Cake\Utility\Xml;
 use Cake\View\Helper;
-use BaserCore\Annotation\NoTodo;
-use BaserCore\Annotation\Checked;
-use BaserCore\Annotation\UnitTest;
 
 /**
  * RSS Helper class for easy output RSS structures.
@@ -34,7 +31,7 @@ class RssHelper extends Helper
      *
      * @var array
      */
-    public array $helpers = ['Url', 'Time'];
+    public $helpers = ['Url', 'Time'];
 
     /**
      * Base URL
@@ -119,9 +116,6 @@ class RssHelper extends Helper
      * @param array $elements Named array elements which are converted to tags
      * @param string|null $content Content (`<item />`'s belonging to this channel
      * @return string An RSS `<channel />`
-     * @checked
-     * @noTodo
-     * @unitTest
      */
     public function channel($attrib = [], $elements = [], $content = null)
     {
@@ -168,9 +162,6 @@ class RssHelper extends Helper
      * @param string|array|null $callback A string function name, or array containing an object
      *     and a string method name
      * @return string A set of RSS `<item />` elements
-     * @checked
-     * @noTodo
-     * @unitTest
      */
     public function items($items, $callback = null)
     {
@@ -194,9 +185,6 @@ class RssHelper extends Helper
      * @param array $att The attributes of the `<item />` element
      * @param array $elements The list of elements contained in this `<item />`
      * @return string An RSS `<item />` element
-     * @checked
-     * @noTodo
-     * @unitTest
      */
     public function item($att = [], $elements = [])
     {
@@ -290,9 +278,6 @@ class RssHelper extends Helper
      * @param int|string|\DateTime $time UNIX timestamp or valid time string or DateTime object.
      * @return string An RSS-formatted timestamp
      * @see \Cake\View\Helper\TimeHelper::toRSS
-     * @checked
-     * @noTodo
-     * @unitTest
      */
     public function time($time)
     {
@@ -307,9 +292,6 @@ class RssHelper extends Helper
      * @param string|array|null $content XML element content
      * @param bool $endTag Whether the end tag of the element should be printed
      * @return string XML
-     * @checked
-     * @noTodo
-     * @unitTest
      */
     public function elem($name, $attrib = [], $content = null, $endTag = true)
     {

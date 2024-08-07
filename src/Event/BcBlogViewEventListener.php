@@ -67,7 +67,7 @@ class BcBlogViewEventListener extends \BaserCore\Event\BcViewEventListener
             /** @var View $view */
             $view = $event->getSubject();
             if (!$view->helpers()->has('Blog')) {
-                $view->loadHelper('Blog', ['className' => 'BcBlog.Blog']);
+                $view->loadHelper('BcBlog.Blog');
             }
         }
     }
@@ -84,7 +84,7 @@ class BcBlogViewEventListener extends \BaserCore\Event\BcViewEventListener
         $blogContentTable = \Cake\ORM\TableRegistry::getTableLocator()->get('BcBlog.BlogContents');
         $blogContents = $blogContentTable->find()
             ->contain('Contents')
-            ->orderBy(['Contents.lft'])
+            ->order(['Contents.lft'])
             ->all();
         $blogContentMenus = [];
         foreach($blogContents as $blogContent) {
