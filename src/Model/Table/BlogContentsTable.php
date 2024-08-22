@@ -62,7 +62,7 @@ class BlogContentsTable extends BlogAppTable
 
         $validator->scalar('list_count')
             ->notEmptyString('list_count', __d('baser_core', '一覧表示件数を入力してください。'))
-            ->range('list_count', [0, 101], __d('baser_core', '一覧表示件数は100までの数値で入力してください。'))
+            ->range('list_count', [0, 100], __d('baser_core', '一覧表示件数は100までの数値で入力してください。'))
             ->add('list_count', 'halfText', [
                 'provider' => 'bc',
                 'rule' => 'halfText',
@@ -70,7 +70,7 @@ class BlogContentsTable extends BlogAppTable
 
         $validator->scalar('feed_count')
             ->notEmptyString('feed_count', __d('baser_core', 'RSSフィード出力件数を入力してください。'))
-            ->range('feed_count', [0, 101], __d('baser_core', 'RSSフィード出力件数は100までの数値で入力してください。'))
+            ->range('feed_count', [0, 100], __d('baser_core', 'RSSフィード出力件数は100までの数値で入力してください。'))
             ->add('feed_count', 'halfText', [
                 'provider' => 'bc',
                 'rule' => 'halfText',
@@ -187,6 +187,7 @@ class BlogContentsTable extends BlogAppTable
      * @return void
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function createRelatedSearchIndexes(EntityInterface $entity)
     {
@@ -213,6 +214,7 @@ class BlogContentsTable extends BlogAppTable
      * @param int $newSiteId 新しいサイトID
      * @return mixed EntityInterface|false
      * @checked
+     * @unitTest
      */
     public function copy(
         int $id,
@@ -269,7 +271,7 @@ class BlogContentsTable extends BlogAppTable
             $newBlogContent = clone $result;
             $blogPosts = $this->BlogPosts->find()
                 ->where(['BlogPosts.blog_content_id' => $id])
-                ->order(['BlogPosts.id'])
+                ->orderBy(['BlogPosts.id'])
                 ->all();
             if ($blogPosts) {
                 foreach($blogPosts as $blogPost) {
