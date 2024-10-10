@@ -16,6 +16,7 @@ use BaserCore\Annotation\NoTodo;
 use BaserCore\Annotation\Checked;
 use BaserCore\Annotation\UnitTest;
 use BaserCore\Error\BcException;
+use BaserCore\Event\BcEventDispatcherTrait;
 use BaserCore\Model\Entity\Content;
 use BaserCore\Model\Table\UsersTable;
 use BaserCore\Utility\BcUtil;
@@ -41,6 +42,12 @@ use Cake\Validation\Validator;
  */
 class BlogPostsTable extends BlogAppTable
 {
+
+    /**
+     * Trait
+     */
+    use BcEventDispatcherTrait;
+
     /**
      * 検索テーブルへの保存可否
      *
@@ -432,7 +439,7 @@ class BlogPostsTable extends BlogAppTable
      * @return array
      * @checked
      * @noTodo
-     * @unitTest
+     * @unitTest 
      */
     protected function _getEntryDatesConditions($blogContentId, $year, $month)
     {

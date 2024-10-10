@@ -11,7 +11,6 @@
 
 namespace BcBlog\Test\TestCase\Model;
 
-use BaserCore\Test\Factory\UserGroupFactory;
 use BaserCore\TestSuite\BcTestCase;
 use BcBlog\Model\Table\BlogTagsTable;
 use BcBlog\Test\Factory\BlogTagFactory;
@@ -30,7 +29,6 @@ class BlogTagsTableTest extends BcTestCase
         'plugin.BcBlog.Factory/BlogPosts',
         'plugin.BcBlog.Factory/BlogPostsBlogTags',
         'plugin.BcBlog.Factory/BlogTags',
-        'plugin.BaserCore.Factory/UserGroups',
     ];
 
     /**
@@ -209,20 +207,5 @@ class BlogTagsTableTest extends BcTestCase
         $blogTags = $this->getTableLocator()->get('BcBlog.BlogTags');
         $query = $blogTags->find()->where(['name' => 'afterAdd']);
         $this->assertEquals(1, $query->count());
-    }
-
-    /**
-     * test hasNewTagAddablePermission
-     */
-    public function test_hasNewTagAddablePermission()
-    {
-        //データーを生成
-        UserGroupFactory::make(['id' => 2])->persist();
-
-        //アクセス制限がある場合、
-        $this->assertTrue($this->BlogTagsTable->hasNewTagAddablePermission([1], 1));
-
-        //アクセス制限がない場合、
-        $this->assertFalse($this->BlogTagsTable->hasNewTagAddablePermission([2], 1));
     }
 }

@@ -44,7 +44,6 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return \Cake\Datasource\EntityInterface
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function getNew()
     {
@@ -57,7 +56,6 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return \Cake\Datasource\EntityInterface
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function get($id)
     {
@@ -71,7 +69,6 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return \Cake\Datasource\EntityInterface
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function create(array $postData)
     {
@@ -87,7 +84,6 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return \Cake\ORM\Query
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function getIndex(array $queryParams)
     {
@@ -116,7 +112,6 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return Query
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function createIndexOrder(Query $query, array $params)
     {
@@ -133,7 +128,6 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return Query
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function createIndexConditions(Query $query, array $params)
     {
@@ -156,7 +150,7 @@ class BlogTagsService implements BlogTagsServiceInterface
         }
         if ($params['contentUrl']) {
             $assocContent = true;
-            $conditions['Contents.url'] = $params['contentUrl'];
+            $conditions['Content.url'] = $params['contentUrl'];
         }
         if (!empty($params['name'])) {
             $conditions['BlogTags.name LIKE'] = '%' . urldecode($params['name']) . '%';
@@ -191,7 +185,6 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return \Cake\Datasource\EntityInterface
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function update(BlogTag $blogTag, $postData)
     {
@@ -206,7 +199,6 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return bool
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function delete(int $id)
     {
@@ -221,7 +213,6 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return array
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function getTitlesById(array $ids): array
     {
@@ -235,7 +226,6 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return bool
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function batch(string $method, array $ids): bool
     {
