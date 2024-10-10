@@ -21,7 +21,6 @@ use BcBlog\Service\BlogPostsService;
 use BcBlog\Service\BlogPostsServiceInterface;
 use BcBlog\Service\Front\BlogFrontService;
 use BcBlog\Service\Front\BlogFrontServiceInterface;
-use Cake\Core\Exception\CakeException;
 use Cake\Event\EventInterface;
 use BaserCore\Annotation\UnitTest;
 use BaserCore\Annotation\NoTodo;
@@ -111,14 +110,8 @@ class BlogController extends BlogFrontAppController
                 'blog_content_id' => $blogContentId,
                 'limit' => $listCount,
                 'status' => 'publish',
-                'draft' => false,
-                'contain' => [
-                    'Users',
-                    'BlogCategories',
-                    'BlogContents' => ['Contents'],
-                    'BlogComments',
-                    'BlogTags',
-            ]]));
+                'draft' => false
+            ]));
         } catch (NotFoundException $e) {
             return $this->redirect(['action' => 'index']);
         }
@@ -346,14 +339,10 @@ class BlogController extends BlogFrontAppController
             ]));
         }
 
-        try {
-            $service->sendCommentToAdmin($entity);
-            // コメント承認機能を利用していない場合は、公開されているコメント投稿者に送信
-            if (!$blogContent->comment_approve) {
-                $service->sendCommentToContributor($entity);
-            }
-        } catch (CakeException $e) {
-            $this->log($e->getMessage());
+        $service->sendCommentToAdmin($entity);
+        // コメント承認機能を利用していない場合は、公開されているコメント投稿者に送信
+        if (!$blogContent->comment_approve) {
+            $service->sendCommentToContributor($entity);
         }
 
         $this->set([
