@@ -138,7 +138,7 @@ class BlogPostsTable extends BlogAppTable
             ->notEmptyString('title', __d('baser_core', 'タイトルを入力してください。'));
         $validator
             ->scalar('content')
-            ->add('content', [
+            ->add('contents', [
                 'containsScript' => [
                     'rule' => ['containsScript'],
                     'provider' => 'bc',
@@ -166,13 +166,15 @@ class BlogPostsTable extends BlogAppTable
                 ]
             ]);
         $validator
+            ->dateTime('publish_begin')
+            ->allowEmptyDateTime('publish_begin')
             ->add('publish_begin', [
-                'dateTime' => [
-                    'rule' => ['dateTime'],
+                'checkDate' => [
+                    'rule' => ['checkDate'],
+                    'provider' => 'bc',
                     'message' => __d('baser_core', '公開開始日の形式が不正です。')
                 ]
             ])
-            ->allowEmptyDateTime('publish_begin')
             ->add('publish_begin', [
                 'checkDateRange' => [
                     'rule' => ['checkDateRange', ['publish_begin', 'publish_end']],
@@ -181,21 +183,25 @@ class BlogPostsTable extends BlogAppTable
                 ]
             ]);
         $validator
+            ->dateTime('publish_end')
+            ->allowEmptyDateTime('publish_end')
             ->add('publish_end', [
-                'dateTime' => [
-                    'rule' => ['dateTime'],
+                'checkDate' => [
+                    'rule' => ['checkDate'],
+                    'provider' => 'bc',
                     'message' => __d('baser_core', '公開終了日の形式が不正です。')
                 ]
-            ])
-            ->allowEmptyDateTime('publish_end');
+            ]);
         $validator
+            ->dateTime('posted')
+            ->notEmptyString('posted', __d('baser_core', '投稿日を入力してください。'))
             ->add('posted', [
-                'dateTime' => [
-                    'rule' => ['dateTime'],
+                'checkDate' => [
+                    'rule' => ['checkDate'],
+                    'provider' => 'bc',
                     'message' => __d('baser_core', '投稿日の形式が不正です。')
                 ]
-            ])
-            ->notEmptyDateTime('posted', __d('baser_core', '投稿日を入力してください。'));;
+            ]);
         $validator
             ->integer('user_id')
             ->notEmptyString('user_id', __d('baser_core', '投稿者を選択してください。'));
@@ -208,7 +214,7 @@ class BlogPostsTable extends BlogAppTable
                     'message' => __d('baser_core', 'ファイルのアップロード制限を超えています。')
                 ]
             ])
-            ->add('eye_catch', [
+            ->add('eyecatch', [
                 'fileExt' => [
                     'rule' => ['fileExt', ['gif', 'jpg', 'jpeg', 'jpe', 'jfif', 'png']],
                     'provider' => 'bc',

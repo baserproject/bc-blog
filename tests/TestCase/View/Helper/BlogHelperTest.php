@@ -26,7 +26,6 @@ use BcBlog\Test\Factory\BlogPostFactory;
 use BcBlog\Test\Scenario\BlogContentScenario;
 use BcBlog\Test\Scenario\MultiSiteBlogPostScenario;
 use BcBlog\Test\Scenario\MultiSiteBlogScenario;
-use BcBlog\View\BlogFrontAppView;
 use BcBlog\View\Helper\BlogHelper;
 use Cake\Core\Configure;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
@@ -59,7 +58,7 @@ class BlogHelperTest extends BcTestCase
             'news', // name
             '/news/' // url
         );
-        $view = new BlogFrontAppView($this->getRequest());
+        $view = new AppView();
         $blogContent = BlogContentFactory::get(1);
         $blogContent->content = ContentFactory::get(1);
         $view->set('blogContent', $blogContent);

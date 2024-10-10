@@ -278,7 +278,7 @@ class BlogHelper extends Helper
      */
     public function description()
     {
-        echo $this->getDescription();
+        echo BcText::stripScriptTag($this->getDescription());
     }
 
     /**

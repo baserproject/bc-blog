@@ -179,16 +179,18 @@ class BlogTagsServiceTest extends BcTestCase
             'contain' => ['BlogPosts' => ['BlogContents' => ['Contents']]]
         ];
         $result = $this->BlogTagsService->getIndex($params);
-        $sql = $result->sql();
-        $this->assertStringContainsString('BlogTags.name like', $sql);
-        $this->assertStringContainsString('Contents.site_id =', $sql);
-        $this->assertStringContainsString('Contents.url =', $sql);
-        $this->assertStringContainsString('BlogTags.name ASC', $sql);
+        $whereSql = $result->clause('where')->sql(new ValueBinder());
+        $this->assertStringContainsString('BlogTags.name like', $whereSql);
+        $this->assertStringContainsString('Contents.site_id =', $whereSql);
+        $this->assertStringContainsString('Contents.url =', $whereSql);
+        $sortSql = $result->clause('order')->sql(new ValueBinder());
+        $this->assertStringContainsString('BlogTags.name ASC', $sortSql);
         $params['direction'] = 'DESC';
         $params['sort'] = 'id';
         $result = $this->BlogTagsService->getIndex($params);
-        $sql = $result->sql();
-        $this->assertStringContainsString('BlogTags.id DESC', $sql);
+        $sortSql = $result->clause('order')->sql(new ValueBinder());
+        $this->assertStringContainsString('BlogTags.id DESC', $sortSql);
+
     }
 
     /**
@@ -208,8 +210,8 @@ class BlogTagsServiceTest extends BcTestCase
             'contain' => ['BlogPosts' => ['BlogContents' => ['Contents']]]
         ];
         $query = $this->BlogTags->find();
-        $query = $this->BlogTagsService->createIndexConditions($query, $params);
-        $sql = $query->sql();
+        $result = $this->BlogTagsService->createIndexConditions($query, $params);
+        $sql = $result->clause('where')->sql(new ValueBinder());
         $this->assertStringContainsString('BlogTags.name like', $sql);
         $this->assertStringContainsString('Contents.site_id =', $sql);
         $this->assertStringContainsString('Contents.url =', $sql);

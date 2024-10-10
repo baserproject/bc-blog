@@ -137,33 +137,33 @@ class BlogPostsTableTest extends BcTestCase
         BlogPostFactory::make(['name' => 'test'])->persist();
         $errors = $validator->validate([
             'name' => '1',                              //スラッグ
-            'content' => '<?php echo $test; ?>',       //概要欄
+            'contents' => '<?php echo $test; ?>',       //概要欄
             'detail' => '<?php echo $test; ?>',         //本稿欄
             'detail_draft' => '<?php echo $test; ?>',   //草稿欄
             'publish_begin' => '2022-02-29',            //公開開始日
             'publish_end' => '2022-02-29',              //公開終了日
             'posted' => '2022-02-29',                   //投稿日
-            'eye_catch' => 'a.aa',                   //アイキャッチ画像
+            'eyecatch' => 'a.aa',                   //アイキャッチ画像
         ]);
 
         //戻り値を確認
         //スラッグ
         $this->assertEquals('数値だけのスラッグを登録することはできません。', current($errors['name']));
         //概要欄
-        $this->assertEquals('概要欄でスクリプトの入力は許可されていません。', current($errors['content']));
+        $this->assertEquals('概要欄でスクリプトの入力は許可されていません。', current($errors['contents']));
         //本稿欄
         $this->assertEquals('本稿欄でスクリプトの入力は許可されていません。', current($errors['detail']));
         //草稿欄
         $this->assertEquals('草稿欄でスクリプトの入力は許可されていません。', current($errors['detail_draft']));
         //公開開始日
-        $this->assertEquals('公開開始日の形式が不正です。', $errors['publish_begin']['dateTime']);
+        $this->assertEquals('公開開始日の形式が不正です。', $errors['publish_begin']['checkDate']);
         $this->assertEquals('公開期間が不正です。', $errors['publish_begin']['checkDateRange']);
         //公開終了日
-        $this->assertEquals('公開終了日の形式が不正です。', $errors['publish_end']['dateTime']);
+        $this->assertEquals('公開終了日の形式が不正です。', $errors['publish_end']['checkDate']);
         //投稿日
-        $this->assertEquals('投稿日の形式が不正です。', $errors['posted']['dateTime']);
+        $this->assertEquals('投稿日の形式が不正です。', $errors['posted']['checkDate']);
         //アイキャッチ画像
-        $this->assertEquals('許可されていないファイルです。', $errors['eye_catch']['fileExt']);
+        $this->assertEquals('許可されていないファイルです。', $errors['eyecatch']['fileExt']);
     }
 
     /**
@@ -341,7 +341,7 @@ class BlogPostsTableTest extends BcTestCase
     {
         return [
             [1, 2027, 1, 2027, 1],      //日付を設定する場合、
-            [1, null, null, date('Y'), date('m')],   //日付を設定していない場合、
+            [1, null, null, 2023, date('m')],   //日付を設定ない場合、
         ];
     }
 

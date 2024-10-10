@@ -141,9 +141,7 @@ class BlogTagsService implements BlogTagsServiceInterface
         $conditions = $params['conditions'];
         if (!is_null($params['siteId'])) {
             $assocContent = true;
-            $query->matching('BlogPosts.BlogContents.Contents', function ($q) use ($params) {
-                return $q->where(['Contents.site_id' => $params['siteId']]);
-            });
+            $conditions['Contents.site_id'] = $params['siteId'];
         }
         if ($params['contentId']) {
             $contentId = $params['contentId'];
@@ -157,15 +155,8 @@ class BlogTagsService implements BlogTagsServiceInterface
             });
         }
         if ($params['contentUrl']) {
-            $contentUrl = $params['contentUrl'];
             $assocContent = true;
-            $query->matching('BlogPosts.BlogContents.Contents', function ($q) use ($contentUrl) {
-                if(is_array($contentUrl)) {
-                    return $q->where(['Contents.url IN' => $contentUrl]);
-                } else {
-                    return $q->where(['Contents.url' => $contentUrl]);
-                }
-            });
+            $conditions['Contents.url'] = $params['contentUrl'];
         }
         if (!empty($params['name'])) {
             $conditions['BlogTags.name LIKE'] = '%' . urldecode($params['name']) . '%';
