@@ -166,8 +166,6 @@ class BlogContentsTable extends BlogAppTable
      *
      * @param EntityInterface $entity
      * @return void
-     * @checked
-     * @noTodo
      */
     public function createRelatedSearchIndexes(EntityInterface $entity)
     {
@@ -176,7 +174,7 @@ class BlogContentsTable extends BlogAppTable
             ->where(['BlogPosts.blog_content_id' => $entity->id])
             ->contain(['BlogContents' => ['Contents']])
             ->all();
-        if (!$entities->count()) return;
+        if(!$entities->count()) return;
         foreach($entities as $entity) {
             // 保存するために強制的に dirty に設定
             $entity->setDirty('id');
@@ -201,8 +199,7 @@ class BlogContentsTable extends BlogAppTable
         string $newTitle,
         int $newAuthorId,
         int $newSiteId = null
-    )
-    {
+    ) {
         $data = $this->find()->where(['BlogContents.id' => $id])->contain('Contents')->first();
         $oldData = clone $data;
 
@@ -225,12 +222,12 @@ class BlogContentsTable extends BlogAppTable
         $data->content = new Content([
             'name' => $name,
             'parent_id' => $newParentId,
-            'title' => $newTitle ?? $oldData->title . '_copy',
+            'title' => $newTitle,
             'author_id' => $newAuthorId,
             'site_id' => $newSiteId,
             'exclude_search' => false,
-            'description' => $data->content->description,
-            'eyecatch' => $data->content->eyecatch
+			'description' => $data->content->description,
+			'eyecatch' => $data->content->eyecatch
         ]);
         $newBlogContent = $this->patchEntity($this->newEmptyEntity(), $data->toArray());
         if (!is_null($newSiteId) && $siteId != $newSiteId) {
@@ -243,7 +240,7 @@ class BlogContentsTable extends BlogAppTable
 
         try {
             $result = $this->save($newBlogContent);
-            if (!$result) {
+            if(!$result) {
                 $this->getConnection()->rollback();
                 return false;
             }
@@ -252,7 +249,7 @@ class BlogContentsTable extends BlogAppTable
                 ->where(['BlogPosts.blog_content_id' => $id])
                 ->order(['BlogPosts.id'])
                 ->all();
-            if ($blogPosts) {
+            if($blogPosts) {
                 foreach($blogPosts as $blogPost) {
                     $blogPost->blog_category_id = null;
                     $blogPost->blog_content_id = $newBlogContent->id;

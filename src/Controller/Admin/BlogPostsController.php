@@ -26,8 +26,6 @@ use BaserCore\Annotation\NoTodo;
 use BaserCore\Annotation\Checked;
 use BaserCore\Annotation\UnitTest;
 use Cake\Http\Exception\NotFoundException;
-use Cake\Http\Response;
-use Cake\ORM\Exception\PersistenceFailedException;
 
 /**
  * ブログ記事コントローラー
@@ -65,7 +63,6 @@ class BlogPostsController extends BlogAdminAppController
      * - エディタ用のヘルパーをセット
      *
      * @param EventInterface $event
-     * @return Response|null|void
      * @checked
      * @noTodo
      * @unitTest
@@ -93,6 +90,10 @@ class BlogPostsController extends BlogAdminAppController
         /* @var BlogPostsService $service */
         $service = $this->getService(BlogPostsServiceInterface::class);
         $service->setupUpload($blogContentId);
+
+        if (BcSiteConfig::get('editor') && BcSiteConfig::get('editor') !== 'none') {
+            $this->viewBuilder()->addHelpers([BcSiteConfig::get('editor')]);
+        }
     }
 
     /**
@@ -103,7 +104,7 @@ class BlogPostsController extends BlogAdminAppController
      *
      * @param BlogPostsAdminServiceInterface $service
      * @param int $blogContentId
-     * @return Response|void
+     * @return void
      * @checked
      * @noTodo
      * @unitTest
@@ -137,7 +138,7 @@ class BlogPostsController extends BlogAdminAppController
                 ['blog_content_id' => $blogContentId],
                 $this->getRequest()->getQueryParams()
             )));
-        } catch (NotFoundException) {
+        } catch (NotFoundException $e) {
             return $this->redirect(['action' => 'index', $blogContentId]);
         }
 
@@ -180,7 +181,7 @@ class BlogPostsController extends BlogAdminAppController
                     'data' => $post
                 ]);
                 $this->redirect(['action' => 'edit', $blogContentId, $post->id]);
-            } catch (PersistenceFailedException $e) {
+            } catch (\Cake\ORM\Exception\PersistenceFailedException $e) {
                 $post = $e->getEntity();
                 // 入力時アイキャッチの配列問題で表示がエラーとなるため、$this->request->data は空にする
                 $this->setRequest($this->getRequest()->withParsedBody([]));
@@ -236,7 +237,7 @@ class BlogPostsController extends BlogAdminAppController
                     'data' => $post
                 ]);
                 $this->redirect(['action' => 'edit', $blogContentId, $id]);
-            } catch (PersistenceFailedException $e) {
+            } catch (\Cake\ORM\Exception\PersistenceFailedException $e) {
                 $post = $e->getEntity();
                 // 入力時アイキャッチの配列問題で表示がエラーとなるため、$this->request->data は空にする
                 $this->setRequest($this->getRequest()->withParsedBody([]));
@@ -260,7 +261,7 @@ class BlogPostsController extends BlogAdminAppController
      * @param BlogPostsServiceInterface $service
      * @param int $blogContentId
      * @param int $id
-     * @return Response|void
+     * @return void
      * @checked
      * @noTodo
      * @unitTest
@@ -340,7 +341,7 @@ class BlogPostsController extends BlogAdminAppController
      * @param BlogPostsServiceInterface $service
      * @param int $blogContentId
      * @param int $id
-     * @return Response|void
+     * @return void
      * @checked
      * @noTodo
      * @unitTest

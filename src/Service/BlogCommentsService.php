@@ -125,8 +125,6 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      * ブログコメントの初期値を取得する
      *
      * @return EntityInterface 初期値データ
-     * @checked
-     * @noTodo
      */
     public function getNew()
     {
@@ -142,7 +140,6 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      * @param int $blogPostId
      * @param array $postData
      * @return EntityInterface
-     * @checked
      */
     public function add(int $blogContentId, int $blogPostId, array $postData)
     {
@@ -185,8 +182,6 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      *
      * @param $blogContentId
      * @return EntityInterface
-     * @checked
-     * @noTodo
      */
     public function getBlogContent($blogContentId)
     {
@@ -199,8 +194,6 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      * @param EntityInterface|BlogComment $entity
      * @return void
      * @throws \Throwable
-     * @checked
-     * @noTodo
      */
     public function sendCommentToAdmin(EntityInterface $entity)
     {
@@ -241,8 +234,6 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      * @param EntityInterface|BlogComment $entity
      * @return void
      * @throws \Throwable
-     * @checked
-     * @noTodo
      */
     public function sendCommentToContributor(EntityInterface $entity)
     {

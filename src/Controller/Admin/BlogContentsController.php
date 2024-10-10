@@ -68,7 +68,7 @@ class BlogContentsController extends BlogAdminAppController
                 'data' => $this->getRequest()->getData()
             ]);
             if ($event !== false) {
-                $data = ($event->getResult() === null || $event->getResult() === true)? $event->getData('data') : $event->getResult();
+                $data = ($event->getResult() === null || $event->getResult() === true) ? $event->getData('data') : $event->getResult();
                 $this->setRequest($this->getRequest()->withParsedBody($data));
             }
             try {
@@ -112,11 +112,8 @@ class BlogContentsController extends BlogAdminAppController
      * ブログテンプレート編集画面にリダイレクトする
      *
      * @param string $template
-     * @return ResponseInterface
-     * @checked
-     * @noTodo
      */
-    protected function redirectEditBlog(string $template): ResponseInterface
+    protected function redirectEditBlog($template)
     {
         $path = 'Blog' . DS . $template;
         $theme = BcUtil::getCurrentTheme();
