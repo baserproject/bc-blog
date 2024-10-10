@@ -511,7 +511,7 @@ class BlogFrontServiceTest extends BcTestCase
         // サービスメソッドを呼ぶ
         $result = $this->BlogFrontService->getViewVarsForArchivesByAuthor(
             $blogPostsService->getIndex([])->all(),
-            1,
+            'name',
             $blogContentsService->get(1)
         );
 
@@ -533,7 +533,7 @@ class BlogFrontServiceTest extends BcTestCase
         $this->expectException("Cake\Http\Exception\NotFoundException");
         $this->BlogFrontService->getViewVarsForArchivesByAuthor(
             $blogPostsService->getIndex([])->all(),
-            999,
+            'author name test',
             $blogContentsService->get(1)
         );
     }
@@ -702,7 +702,7 @@ class BlogFrontServiceTest extends BcTestCase
         // データを生成
         $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
         UserFactory::make([
-            'id' => 1,
+            'id' => BlogPostFactory::get(1)->user_id,
             'name' => 'name_test',
             'real_name_1' => 'real_name_1_test',
             'real_name_2' => 'real_name_2_test',
@@ -736,7 +736,7 @@ class BlogFrontServiceTest extends BcTestCase
         $this->assertEquals($prevExpected, $rs['prev']);
     }
 
-    public static function getViewVarsForBlogCalendarWidgetDataProvider()
+    private function getViewVarsForBlogCalendarWidgetDataProvider()
     {
         return [
             [6, 2014, 12, true, false],
@@ -752,7 +752,6 @@ class BlogFrontServiceTest extends BcTestCase
     {
         //データを生成
         $this->loadFixtureScenario(MultiSiteBlogScenario::class);
-        BlogPostFactory::make(['id' => 1, 'posted'=> '2015-01-27 12:57:59', 'blog_content_id'=> 6, 'blog_category_id'=> 1, 'user_id'=>1, 'status' => true])->persist();
         //対象メソッドをコール
         $rs = $this->BlogFrontService->getViewVarsForBlogCategoryArchivesWidget(6);
         //戻る値を確認

@@ -26,7 +26,7 @@ class BlogTagsScenario implements FixtureScenarioInterface
     /**
      * load
      */
-    public function load(...$args): mixed
+    public function load(...$args)
     {
         BlogTagFactory::make([[
             'id' => 1,
@@ -46,7 +46,6 @@ class BlogTagsScenario implements FixtureScenarioInterface
             'created' => '2022-08-10 18:57:47',
             'modified' => NULL,
         ]])->persist();
-        return null;
     }
 
 }

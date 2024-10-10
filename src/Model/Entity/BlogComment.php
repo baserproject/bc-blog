@@ -28,8 +28,8 @@ use Cake\ORM\Entity;
  * @property string $email
  * @property string $url
  * @property string $message
- * @property \Cake\I18n\DateTime $created
- * @property \Cake\I18n\DateTime $modified
+ * @property FrozenTime $created
+ * @property FrozenTime $modified
  */
 class BlogComment extends Entity
 {
@@ -39,7 +39,7 @@ class BlogComment extends Entity
      *
      * @var array
      */
-    protected array $_accessible = [
+    protected $_accessible = [
         '*' => true,
         'id' => false
     ];

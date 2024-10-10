@@ -200,14 +200,14 @@ interface BlogPostsServiceInterface
     /**
      * 著者別記事一覧を取得
      *
-     * @param int $userId
+     * @param string $author
      * @param array $options
      * @return Query
      * @checked
      * @noTodo
      * @unitTest
      */
-    public function getIndexByAuthor(int $userId, array $options = []);
+    public function getIndexByAuthor(string $author, array $options = []);
 
     /**
      * タグ別記事一覧を取得

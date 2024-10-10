@@ -11,7 +11,6 @@
 namespace BcBlog\Test\TestCase\Model;
 use BaserCore\Service\PluginsServiceInterface;
 use BaserCore\Test\Factory\ContentFactory;
-use BaserCore\Test\Factory\UserFactory;
 use BaserCore\TestSuite\BcTestCase;
 use BaserCore\Utility\BcContainerTrait;
 use BaserCore\Utility\BcUtil;
@@ -20,10 +19,7 @@ use BcBlog\Service\BlogContentsService;
 use ArrayObject;
 use BcBlog\Service\BlogContentsServiceInterface;
 use BcBlog\Test\Factory\BlogContentFactory;
-use BcBlog\Test\Scenario\MultiSiteBlogPostScenario;
-use BcSearchIndex\Service\SearchIndexesServiceInterface;
 use Cake\Event\Event;
-use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
 
 /**
  * Class BlogContentsTableTest
@@ -37,7 +33,6 @@ class BlogContentsTableTest extends BcTestCase
      * Trait
      */
     use BcContainerTrait;
-    use ScenarioAwareTrait;
 
     /**
      * Setup
@@ -195,7 +190,7 @@ class BlogContentsTableTest extends BcTestCase
         $this->assertEquals($this->BlogContent->alphaNumeric($key), $expected);
     }
 
-    public static function alphaNumericDataProvider()
+    public function alphaNumericDataProvider()
     {
         return [
             [['key' => 'abc'], true],
@@ -257,7 +252,7 @@ class BlogContentsTableTest extends BcTestCase
         }
     }
 
-    public static function afterSaveDataProvider()
+    public function afterSaveDataProvider()
     {
         return [
             ['', 0],
@@ -368,27 +363,6 @@ class BlogContentsTableTest extends BcTestCase
             'conditions' => ['BlogContent.id' => $this->BlogContent->getLastInsertID()]
         ]);
         $this->assertEquals($result['Content']['title'], 'test-title');
-    }
-
-    /**
-     * test copy
-     */
-    public function test_copy()
-    {
-        //init data
-        UserFactory::make()->admin()->persist();
-        $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
-        $this->loginAdmin($this->getRequest());
-        //サービスクラス
-        $blogContentService = $this->getService(BlogContentsServiceInterface::class);
-        //check data before copy
-        $result = $blogContentService->get(6);
-        $this->assertEquals('News 1', $result->content->title);
-        //copy
-        $this->BlogContentsTable->copy(6, 1, 'title_copy', 1, 0);
-        //check data after copy
-        $result = $blogContentService->get(11);
-        $this->assertEquals('title_copy', $result->content->title);
     }
 
     /**
@@ -508,27 +482,6 @@ class BlogContentsTableTest extends BcTestCase
     }
 
     /**
-     * test createRelatedSearchIndexes
-     */
-    public function test_createRelatedSearchIndexes()
-    {
-        //データを生成
-        $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
-        //クラスサービス
-        $blogContentsService = $this->getService(BlogContentsServiceInterface::class);
-        $searchIndexesService = $this->getService(SearchIndexesServiceInterface::class);
-
-        //対象メソッドをコール
-        $this->BlogContentsTable->createRelatedSearchIndexes($blogContentsService->get(6));
-
-        //search_indexesテーブルにデータがあるか確認する
-        $data = $searchIndexesService->get(1);
-        $this->assertEquals('ブログ', $data['type']);
-        $this->assertEquals('BlogPost', $data['model']);
-        $this->assertEquals('/news/archives/3', $data['url']);
-    }
-
-    /**
      * test validationDefault
      */
     public function test_validationDefault()
@@ -538,7 +491,7 @@ class BlogContentsTableTest extends BcTestCase
         ]);
         $this->assertSame([
             'id' => [
-                'integer' => 'The provided value must be an integer'
+                'integer' => 'The provided value is invalid'
             ],
             'content' => [
                 '_required' => '関連するコンテンツがありません'

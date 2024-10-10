@@ -101,8 +101,6 @@ class BlogPostsControllerTest extends BcTestCase
     {
         // postデータを生成
         $postData = [
-            'user_id' => 1,
-            'posted' => '2022-12-01 00:00:00',
             'blog_content_id' => 1,
             'title' => 'baserCMS inc. [デモ] の新しい記事',
             'content' => '記事の概要',
@@ -163,15 +161,15 @@ class BlogPostsControllerTest extends BcTestCase
         $this->assertEquals('blog post edit', $result->blogPost->title);
         $this->assertEquals('記事「blog post edit」を更新しました。', $result->message);
 
-        //エラーを発生した場合を確認
+        //dataは空にする場合を確認
         //APIをコル
-        $this->post('/baser/api/admin/bc-blog/blog_posts/edit/1.json?token=' . $this->accessToken, ['name' => str_repeat('a', 256)]);
+        $this->post('/baser/api/admin/bc-blog/blog_posts/edit/1.json?token=' . $this->accessToken, []);
         //ステータスを確認
         $this->assertResponseCode(400);
         //戻る値を確認
         $result = json_decode((string)$this->_response->getBody());
         $this->assertEquals('入力エラーです。内容を修正してください。', $result->message);
-        $this->assertEquals('スラッグは255文字以内で入力してください。', $result->errors->name->maxLength);
+        $this->assertEquals('タイトルを入力してください。', $result->errors->title->_required);
     }
 
     /**
