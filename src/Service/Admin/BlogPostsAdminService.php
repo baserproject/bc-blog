@@ -162,7 +162,6 @@ class BlogPostsAdminService extends BlogPostsService implements BlogPostsAdminSe
      * @return string
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function getPublishLink(BlogPost $post)
     {
@@ -179,7 +178,6 @@ class BlogPostsAdminService extends BlogPostsService implements BlogPostsAdminSe
      * @return array|array[]|string[]
      * @checked
      * @noTodo
-     * @unitTest
      */
     public function getEditorOptions(bool $isDisableDraft)
     {

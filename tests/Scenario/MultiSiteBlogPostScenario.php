@@ -115,7 +115,6 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             'name' => 'release',
             'title' => 'プレスリリース',
             'status' => 1,
-            'posted' => '2015-01-27 12:57:59',
         ])->persist();
         BlogPostFactory::make([
             'id' => 2,
@@ -124,7 +123,6 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             'name' => 'smartphone_release',
             'title' => 'スマホサイトリリース',
             'status' => 1,
-            'posted' => '2016-02-10 12:57:59',
         ])->persist();
         BlogPostFactory::make([
             'id' => 3,

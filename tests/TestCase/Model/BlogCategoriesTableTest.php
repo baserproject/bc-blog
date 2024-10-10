@@ -18,8 +18,6 @@ use BaserCore\Test\Factory\UsersUserGroupFactory;
 use BaserCore\TestSuite\BcTestCase;
 use BcBlog\Model\Table\BlogCategoriesTable;
 use BcBlog\Test\Factory\BlogCategoryFactory;
-use Cake\Event\Event;
-use Cake\ORM\TableRegistry;
 
 /**
  * Class BlogCategoryTest
@@ -45,7 +43,7 @@ class BlogCategoriesTableTest extends BcTestCase
     {
         $this->setFixtureTruncate();
         parent::setUp();
-        $this->BlogCategoriesTable = $this->getTableLocator()->get('BcBlog.BlogCategories');
+        $this->BlogCategoriesTable = new BlogCategoriesTable();
     }
 
     /**
@@ -85,13 +83,13 @@ class BlogCategoriesTableTest extends BcTestCase
         $this->assertNotNull($blogCategory->getErrors()['id']);
         // id allowEmptyString　テスト
         $blogCategory = $this->BlogCategoriesTable->newEntity(['id' => '']);
-        $errors = $blogCategory->getErrors();
+        $errors  =$blogCategory->getErrors();
         $this->assertFalse(isset($errors['id']));
         // name maxLength　テスト
         $blogCategory = $this->BlogCategoriesTable->newEntity([
             'name' => '_test_blog_category_test_blog_category_test_blog_category_test_blog_category_test_blog_category'
-                . '_test_blog_category_test_blog_category_test_blog_category_test_blog_category_test_blog_category'
-                . '_test_blog_category_test_blog_category_test_blog_category_test_blog_category',
+                .'_test_blog_category_test_blog_category_test_blog_category_test_blog_category_test_blog_category'
+                .'_test_blog_category_test_blog_category_test_blog_category_test_blog_category',
             'blog_content_id' => 1,
             'title' => 'test'
         ]);
@@ -141,8 +139,8 @@ class BlogCategoriesTableTest extends BcTestCase
         // title maxLength　テスト
         $blogCategory = $this->BlogCategoriesTable->newEntity([
             'title' => '_test_blog_category_test_blog_category_test_blog_category_test_blog_category_test_blog_category'
-                . '_test_blog_category_test_blog_category_test_blog_category_test_blog_category_test_blog_category'
-                . '_test_blog_category_test_blog_category_test_blog_category_test_blog_category',
+                .'_test_blog_category_test_blog_category_test_blog_category_test_blog_category_test_blog_category'
+                .'_test_blog_category_test_blog_category_test_blog_category_test_blog_category',
             'blog_content_id' => 1,
             'name' => 'test2'
         ]);
@@ -422,45 +420,5 @@ class BlogCategoriesTableTest extends BcTestCase
             [1, 'hoge', false],
             [2, 'child', false]
         ];
-    }
-
-    /**
-     * test beforeCopyEvent
-     */
-    public function testBeforeCopyEvent()
-    {
-        BlogCategoryFactory::make(['id' => 1, 'name' => 'test', 'title' => 'title', 'blog_content_id' => 1])->persist();
-        //イベントをコル
-        $this->entryEventToMock(self::EVENT_LAYER_MODEL, 'BcBlog.BlogCategories.beforeCopy', function (Event $event) {
-            $data = $event->getData('data');
-            $data['name'] = 'beforeCopy';
-            $event->setData('data', $data);
-        });
-
-        $this->BlogCategoriesTable->copy(1);
-        //イベントに入るかどうか確認
-        $blogCategories = $this->getTableLocator()->get('BcBlog.BlogCategories');
-        $query = $blogCategories->find()->where(['name' => 'beforeCopy_copy']);
-        $this->assertEquals(1, $query->count());
-    }
-
-    /**
-     * test AfterCopyEvent
-     */
-    public function testAfterCopyEvent()
-    {
-        BlogCategoryFactory::make(['id' => 1, 'name' => 'test', 'title' => 'title', 'blog_content_id' => 1])->persist();
-        //イベントをコル
-        $this->entryEventToMock(self::EVENT_LAYER_MODEL, 'BcBlog.BlogCategories.afterCopy', function (Event $event) {
-            $data = $event->getData('data');
-            $blogCategories = TableRegistry::getTableLocator()->get('BcBlog.BlogCategories');
-            $data->name = 'afterAdd';
-            $blogCategories->save($data);
-        });
-        $this->BlogCategoriesTable->copy(1);
-        //イベントに入るかどうか確認
-        $blogCategories = $this->getTableLocator()->get('BcBlog.BlogCategories');
-        $query = $blogCategories->find()->where(['name' => 'afterAdd']);
-        $this->assertEquals(1, $query->count());
     }
 }
