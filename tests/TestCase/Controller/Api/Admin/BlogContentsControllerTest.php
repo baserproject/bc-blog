@@ -190,13 +190,7 @@ class BlogContentsControllerTest extends BcTestCase
      */
     public function test_delete()
     {
-        ContentFactory::make([
-            'plugin' => 'BcBlog',
-            'type' => 'BlogContent',
-            'entity_id' => 101,
-            'lft' => 1,
-            'rght' => 2
-        ])->persist();
+        ContentFactory::make(['plugin' => 'BcBlog', 'type' => 'BlogContent', 'entity_id' => 101])->persist();
         BlogContentFactory::make(['id' => 101, 'description' => 'abc'])->persist();
 
         $this->post('/baser/api/admin/bc-blog/blog_contents/delete/101.json?token=' . $this->accessToken);

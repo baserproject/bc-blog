@@ -18,7 +18,6 @@ use BaserCore\Error\BcException;
 use BcBlog\Model\Entity\BlogTag;
 use BcBlog\Model\Table\BlogTagsTable;
 use Cake\ORM\Query;
-use Cake\ORM\Table;
 use Cake\ORM\TableRegistry;
 
 /**
@@ -28,12 +27,6 @@ use Cake\ORM\TableRegistry;
  */
 class BlogTagsService implements BlogTagsServiceInterface
 {
-
-    /**
-     * BlogTags Table
-     * @var BlogTagsTable|Table
-     */
-    public BlogTagsTable|Table $BlogTags;
 
     /**
      * Construct

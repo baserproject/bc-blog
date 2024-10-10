@@ -23,7 +23,6 @@ use Cake\Core\Configure;
 use Cake\Core\Plugin;
 use Cake\Datasource\EntityInterface;
 use Cake\ORM\Query;
-use Cake\ORM\Table;
 use Cake\ORM\TableRegistry;
 
 /**
@@ -37,12 +36,6 @@ class BlogContentsService implements BlogContentsServiceInterface
      * Trait
      */
     use BcContainerTrait;
-
-    /**
-     * BlogContents
-     * @var BlogContentsTable|Table
-     */
-    public BlogContentsTable|Table $BlogContents;
 
     /**
      * Construct
