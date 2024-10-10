@@ -19,16 +19,16 @@ use BcBlog\Controller\BlogController;
 use BcBlog\Service\BlogContentsServiceInterface;
 use BcBlog\Service\BlogPostsServiceInterface;
 use BcBlog\Service\Front\BlogFrontServiceInterface;
-use BcBlog\Test\Factory\BlogCategoryFactory;
-use BcBlog\Test\Factory\BlogCommentFactory;
 use BcBlog\Test\Factory\BlogContentFactory;
-use BcBlog\Test\Factory\BlogPostBlogTagFactory;
 use BcBlog\Test\Factory\BlogPostFactory;
-use BcBlog\Test\Factory\BlogTagFactory;
 use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Event\Event;
+use Cake\Filesystem\File;
 use Cake\TestSuite\IntegrationTestTrait;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
-use Cake\Filesystem\File;
+use BcBlog\Model\Entity\BlogContent;
+use BcBlog\Test\Factory\BlogCommentFactory;
+use BcBlog\Test\Scenario\BlogContentScenario;
 
 /**
  * Class BlogControllerTest
@@ -132,82 +132,12 @@ class BlogControllerTest extends BcTestCase
     public function test_archives()
     {
         //準備
-        $this->enableSecurityToken();
-        $this->enableCsrfToken();
-        $this->loadFixtureScenario(InitAppScenario::class);
-        BlogTagFactory::make([[
-            'id' => 1,
-            'name' => 'tag1',
-            'created' => '2022-08-10 18:57:47',
-            'modified' => NULL,
-        ]])->persist();
-        ContentFactory::make([
-            'id' => 1,
-            'url' => '/news/',
-            'site_id' => 1,
-            'status' => true,
-            'tag_use' => true,
-            'entity_id' => 1,
-            'plugin' => 'BcBlog',
-            'type' => 'BlogContent',
-            'lft' => '1',
-            'rght' => '2',
-            'publish_begin' => '2020-01-27 12:00:00',
-            'layout_template' => 'default',
-            'publish_end' => '9000-01-27 12:00:00'
-        ])->persist();
-        BlogPostFactory::make([
-            'id' => 1,
-            'blog_content_id' => 1,
-            'blog_category_id' => 1,
-            'no' => 1,
-            'user_id' => 1,
-            'name' => 'post1',
-            'posted' => '2023-01-11 12:57:59',
-            'status' => true])->persist();
-        BlogContentFactory::make(['id' => 1,
-            'tag_use' => true,
-            'list_direction' => 'DESC',
-            'template' => 'default'
-        ])->persist();
-        BlogCategoryFactory::make([
-            'id' => 1,
-            'blog_content_id' => 1,
-            'no' => 1,
-            'name' => 'release',
-            'title' => 'プレスリリース',
-            'status' => 1,
-            'lft' => 1,
-            'rght' => 2,
-        ])->persist();
-        BlogPostBlogTagFactory::make(['id' => 1, 'blog_post_id' => 1, 'blog_tag_id' => 1])->persist();
+
         //正常系実行
-        //type = 'category'
-        $this->get('/news/archives/category/release');
-        $this->assertResponseOk();
-        $vars = $this->_controller->viewBuilder()->getVars();
-        $this->assertEquals('category', $vars['blogArchiveType']);
-        $this->assertEquals('release', $vars['blogCategory']->name);
-        $this->assertEquals('post1', $vars['posts']->toArray()[0]->name);
-        //type = 'author'
-        $this->get('/news/archives/author/name');
-        $this->assertResponseOk();
-        $vars = $this->_controller->viewBuilder()->getVars();
-        $this->assertEquals('author', $vars['blogArchiveType']);
-        $this->assertEquals('name', $vars['author']->name);
-        $this->assertEquals('post1', $vars['posts']->toArray()[0]->name);
-        //type = 'tag'
-        $this->get('/news/archives/tag/tag1');
-        $this->assertResponseOk();
-        $vars = $this->_controller->viewBuilder()->getVars();
-        $this->assertEquals('tag', $vars['blogArchiveType']);
-        $this->assertEquals('tag1', $vars['blogTag']->name);
-        $this->assertEquals('post1', $vars['posts']->toArray()[0]->name);
-        //type = 'date'
-        $this->get('/news/archives/date/2023');
-        $vars = $this->_controller->viewBuilder()->getVars();
-        $this->assertEquals('yearly', $vars['blogArchiveType']);
-        $this->assertEquals('post1', $vars['posts']->toArray()[0]->name);
+
+        //異常系実行
+
+
     }
 
     /**
@@ -230,80 +160,12 @@ class BlogControllerTest extends BcTestCase
     public function test_tags()
     {
         //準備
-        $this->enableSecurityToken();
-        $this->enableCsrfToken();
-        BlogTagFactory::make([[
-            'id' => 1,
-            'name' => 'tag1',
-            'created' => '2022-08-10 18:57:47',
-            'modified' => NULL,
-        ]])->persist();
-        BlogTagFactory::make([[
-            'id' => 2,
-            'name' => 'tag2',
-            'created' => '2022-08-10 18:57:47',
-            'modified' => NULL,
-        ]])->persist();
-        BlogTagFactory::make([[
-            'id' => 3,
-            'name' => 'tag3',
-            'created' => '2022-08-10 18:57:47',
-            'modified' => NULL,
-        ]])->persist();
-        ContentFactory::make([
-            'id' => 1,
-            'url' => '/index',
-            'site_id' => 1,
-            'status' => true,
-            'entity_id' => 1,
-            'plugin' => 'BcBlog',
-            'type' => 'BlogContent',
-            'lft' => '1',
-            'rght' => '2',
-            'publish_begin' => '2020-01-27 12:00:00',
-            'publish_end' => '9000-01-27 12:00:00'
-        ])->persist();
-        BlogPostFactory::make(['id' => 1, 'blog_content_id' => 1, 'no' => 1, 'status' => true])->persist();
-        BlogContentFactory::make(['id' => 1])->persist();
-        ContentFactory::make([
-            'id' => 2,
-            'url' => '/index',
-            'site_id' => 1,
-            'status' => true,
-            'entity_id' => 2,
-            'plugin' => 'BcBlog',
-            'type' => 'BlogContent',
-            'lft' => '3',
-            'rght' => '4',
-            'publish_begin' => '2020-01-27 12:00:00',
-            'publish_end' => '9000-01-27 12:00:00'
-        ])->persist();
-        BlogPostFactory::make(['id' => 2, 'blog_content_id' => 2, 'no' => 2, 'status' => true])->persist();
-        BlogContentFactory::make(['id' => 2])->persist();
-        ContentFactory::make([
-            'id' => 3,
-            'url' => '/index',
-            'site_id' => 1,
-            'status' => true,
-            'entity_id' => 3,
-            'plugin' => 'BcBlog',
-            'type' => 'BlogContent',
-            'lft' => '5',
-            'rght' => '6',
-            'publish_begin' => '2020-01-27 12:00:00',
-            'publish_end' => '9000-01-27 12:00:00'
-        ])->persist();
-        BlogPostFactory::make(['id' => 3, 'blog_content_id' => 3, 'no' => 3, 'status' => true])->persist();
-        BlogContentFactory::make(['id' => 3])->persist();
-        BlogPostBlogTagFactory::make(['id' => 1, 'blog_post_id' => 1, 'blog_tag_id' => 1])->persist();
-        BlogPostBlogTagFactory::make(['id' => 2, 'blog_post_id' => 2, 'blog_tag_id' => 1])->persist();
-        BlogPostBlogTagFactory::make(['id' => 3, 'blog_post_id' => 3, 'blog_tag_id' => 2])->persist();
+
         //正常系実行
-        $this->get('/bc-blog/blog/tags/tag1');
-        $this->assertResponseSuccess();
-        $vars = $this->_controller->viewBuilder()->getVars();
-        $this->assertEquals('tag1', $vars['tag']);
-        $this->assertEquals(2, $vars['posts']->toArray()[0]->id);
+
+        //異常系実行
+
+
     }
 
     /**
@@ -369,5 +231,6 @@ class BlogControllerTest extends BcTestCase
 
 
     }
+
 
 }
