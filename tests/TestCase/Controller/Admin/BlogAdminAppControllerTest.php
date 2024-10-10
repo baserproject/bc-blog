@@ -25,6 +25,15 @@ class BlogAdminAppControllerTest extends BcTestCase
 {
 
     /**
+     * Fixtures
+     *
+     * @var array
+     */
+    public $fixtures = [
+        'plugin.BaserCore.Sites',
+    ];
+
+    /**
      * Trait
      */
     use IntegrationTestTrait;

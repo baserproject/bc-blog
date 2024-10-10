@@ -34,6 +34,11 @@ class BlogContentsTableTest extends BcTestCase
      */
     use BcContainerTrait;
 
+    public $fixtures = [
+        'plugin.BcBlog.Factory/BlogContents',
+        'plugin.BaserCore.Factory/Contents',
+    ];
+
     /**
      * Setup
      *

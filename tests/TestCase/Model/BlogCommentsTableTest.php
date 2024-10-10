@@ -21,6 +21,9 @@ use BcBlog\Model\Table\BlogCommentsTable;
  */
 class BlogCommentsTableTest extends BcTestCase
 {
+    public $fixtures = [
+        'plugin.BcBlog.Factory/BlogComments',
+    ];
 
     /**
      * Set Up

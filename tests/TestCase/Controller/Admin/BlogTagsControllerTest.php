@@ -34,12 +34,28 @@ class BlogTagsControllerTest extends BcTestCase
     use ScenarioAwareTrait;
 
     /**
+     * Fixtures
+     *
+     * @var array
+     */
+    public $fixtures = [
+        'plugin.BaserCore.Factory/Sites',
+        'plugin.BaserCore.Factory/SiteConfigs',
+        'plugin.BaserCore.Factory/Users',
+        'plugin.BaserCore.Factory/UsersUserGroups',
+        'plugin.BaserCore.Factory/UserGroups',
+        'plugin.BcBlog.Factory/BlogPosts',
+        'plugin.BcBlog.Factory/BlogTags',
+    ];
+
+    /**
      * set up
      *
      * @return void
      */
     public function setUp(): void
     {
+        $this->setFixtureTruncate();
         parent::setUp();
         $this->loadFixtureScenario(InitAppScenario::class);
         $this->BlogTagsController = new BlogTagsController($this->loginAdmin($this->getRequest()));

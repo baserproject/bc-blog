@@ -34,12 +34,24 @@ class BlogContentsAdminServiceTest extends BcTestCase
     use IntegrationTestTrait;
 
     /**
+     * Fixtures
+     *
+     * @var array
+     */
+    public $fixtures = [
+        'plugin.BaserCore.Factory/Contents',
+        'plugin.BcBlog.Factory/BlogContents',
+        'plugin.BaserCore.Factory/Sites',
+    ];
+
+    /**
      * Set Up
      *
      * @return void
      */
     public function setUp(): void
     {
+        $this->setFixtureTruncate();
         parent::setUp();
         $this->BlogContentsAdminService = new BlogContentsAdminService();
     }

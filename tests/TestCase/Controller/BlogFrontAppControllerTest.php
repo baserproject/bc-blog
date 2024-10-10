@@ -24,6 +24,14 @@ class BlogFrontAppControllerTest extends BcTestCase
 {
 
     /**
+     * Fixtures
+     *
+     * @var array
+     */
+    public $fixtures = [
+    ];
+
+    /**
      * set up
      */
     public function setUp(): void

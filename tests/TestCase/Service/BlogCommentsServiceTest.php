@@ -32,12 +32,25 @@ class BlogCommentsServiceTest extends BcTestCase
     use ScenarioAwareTrait;
 
     /**
+     * Fixtures
+     *
+     * @var array
+     */
+    public $fixtures = [
+        'plugin.BcBlog.Factory/BlogPosts',
+        'plugin.BcBlog.Factory/BlogComments',
+        'plugin.BcBlog.Factory/BlogContents',
+        'plugin.BaserCore.Factory/Contents',
+    ];
+
+    /**
      * Set Up
      *
      * @return void
      */
     public function setUp(): void
     {
+        $this->setFixtureTruncate();
         parent::setUp();
         $this->BlogCommentsService = new BlogCommentsService();
     }

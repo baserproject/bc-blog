@@ -57,7 +57,6 @@ class BlogContentsController extends BlogAdminAppController
      * @param int $id
      * @return void|ResponseInterface
      * @checked
-     * @unitTest
      */
     public function edit(BlogContentsAdminServiceInterface $service, int $id)
     {
