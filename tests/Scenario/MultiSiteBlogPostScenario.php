@@ -47,11 +47,12 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
     /**
      * load
      */
-    public function load(...$args)
+    public function load(...$args): mixed
     {
         $this->loadFixtureScenario(MultiSiteScenario::class);
         $this->createBlogContents();
         $this->createBlogPosts();
+        return null;
     }
 
     /**
@@ -65,7 +66,8 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             1, // siteId
             1, // parentId
             'news1', // name
-            '/news/' // url
+            '/news/', // url,
+            'News 1' // title
         );
         $this->loadFixtureScenario(
             BlogContentScenario::class,
@@ -73,7 +75,8 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             2, // siteId
             1, // parentId
             'news2', // name
-            '/s/news/' // url
+            '/s/news/', // url
+            'News 2' // title
         );
         $this->loadFixtureScenario(
             BlogContentScenario::class,
@@ -81,7 +84,8 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             3, // siteId
             1, // parentId
             'news3', // name
-            '/en/news/' // url
+            '/en/news/', // url
+            'News 3' // title
         );
         $this->loadFixtureScenario(
             BlogContentScenario::class,
@@ -89,7 +93,8 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             4, // siteId
             1, // parentId
             'news4', // name
-            '/example.com/news/' // url
+            '/example.com/news/', // url
+            'News 4' // title
         );
         $this->loadFixtureScenario(
             BlogContentScenario::class,
@@ -97,7 +102,8 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             5, // siteId
             1, // parentId
             'news5', // name
-            '/sub/' // url
+            '/sub/', // url
+            'News 5' // title
         );
         $contentsTable = TableRegistry::getTableLocator()->get('BaserCore.Contents');
         $contentsTable->recover();
@@ -110,11 +116,15 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
     {
         BlogPostFactory::make([
             'id' => 1,
+            'user_id' => 1,
             'blog_content_id' => 6,
+            'blog_category_id' => 6,
             'no' => 3,
             'name' => 'release',
             'title' => 'プレスリリース',
             'status' => 1,
+            'exclude_search' => 0,
+            'posted' => '2015-01-27 12:57:59',
         ])->persist();
         BlogPostFactory::make([
             'id' => 2,
@@ -123,6 +133,8 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             'name' => 'smartphone_release',
             'title' => 'スマホサイトリリース',
             'status' => 1,
+            'exclude_search' => 0,
+            'posted' => '2016-02-10 12:57:59',
         ])->persist();
         BlogPostFactory::make([
             'id' => 3,
@@ -131,6 +143,7 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             'name' => 'english_release',
             'title' => '英語サイトリリース',
             'status' => 1,
+            'exclude_search' => 0,
         ])->persist();
         BlogPostFactory::make([
             'id' => 4,
@@ -139,6 +152,7 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             'name' => 'another_domain_release',
             'title' => '別サイトリリース',
             'status' => 1,
+            'exclude_search' => 0,
         ])->persist();
         BlogPostFactory::make([
             'id' => 5,
@@ -147,6 +161,7 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             'name' => 'sub_domain_release',
             'title' => '別サイトリリース',
             'status' => 1,
+            'exclude_search' => 0,
         ])->persist();
         BlogPostFactory::make([
             'id' => 6,
@@ -155,7 +170,9 @@ class MultiSiteBlogPostScenario implements FixtureScenarioInterface
             'name' => 'release',
             'title' => 'プレスリリース',
             'status' => 1,
+            'exclude_search' => 0,
         ])->persist();
+        return null;
     }
 
 }

@@ -36,25 +36,6 @@ class BlogCategoriesControllerTest extends BcTestCase
     use IntegrationTestTrait;
 
     /**
-     * Fixtures
-     *
-     * @var array
-     */
-    public $fixtures = [
-        'plugin.BaserCore.Factory/Sites',
-        'plugin.BaserCore.Factory/SiteConfigs',
-        'plugin.BaserCore.Factory/Users',
-        'plugin.BaserCore.Factory/UsersUserGroups',
-        'plugin.BaserCore.Factory/UserGroups',
-        'plugin.BaserCore.Factory/Dblogs',
-        'plugin.BcBlog.Factory/BlogCategories',
-        'plugin.BcBlog.Factory/BlogComments',
-        'plugin.BcBlog.Factory/BlogContents',
-        'plugin.BaserCore.Factory/Contents',
-        'plugin.BcBlog.Factory/BlogPosts',
-    ];
-
-    /**
      * Access Token
      * @var string
      */
@@ -71,7 +52,6 @@ class BlogCategoriesControllerTest extends BcTestCase
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->loadFixtureScenario(InitAppScenario::class);
         $token = $this->apiLoginAdmin(1);
@@ -87,6 +67,35 @@ class BlogCategoriesControllerTest extends BcTestCase
     public function tearDown(): void
     {
         parent::tearDown();
+    }
+
+    /**
+     * test index
+     */
+    public function test_index()
+    {
+        //準備
+        PermissionFactory::make()->allowGuest('/baser/api/admin/*')->persist();
+        $this->loadFixtureScenario(
+            BlogContentScenario::class,
+            1,  // id
+            1, // siteId
+            null, // parentId
+            'news1', // name
+            '/news/' // url
+        );
+        BlogCategoryFactory::make(['id' => 100, 'title' => 'title test', 'name' => 'name-test', 'blog_content_id' => 1])->persist();
+        BlogPostFactory::make(['id' => 100, 'blog_content_id' => 1, 'blog_category_id' => 100, 'status' => true])->persist();
+
+        //正常系実行
+        $this->get('/baser/api/admin/bc-blog/blog_categories/index.json?blog_content_id=1&token=' . $this->accessToken);
+        $this->assertResponseOk();
+        $result = json_decode((string)$this->_response->getBody());
+        $this->assertEquals('title test', $result->blogCategories[0]->title);
+
+        //異常系実行：blog_content_id指定しない
+        $this->get('/baser/api/admin/bc-blog/blog_categories/index.json?blog_content_id=&token=' . $this->accessToken);
+        $this->assertResponseCode(500);
     }
 
     /**
@@ -111,6 +120,34 @@ class BlogCategoriesControllerTest extends BcTestCase
         $this->assertResponseOk();
         $result = json_decode((string)$this->_response->getBody());
         $this->assertEquals(get_object_vars($result->blogCategories)[3], 'title 3');
+    }
+
+    /**
+     * test view
+     */
+    public function test_view()
+    {
+        //準備
+        PermissionFactory::make()->allowGuest('/baser/api/admin/*')->persist();
+        $this->loadFixtureScenario(
+            BlogContentScenario::class,
+            1,  // id
+            1, // siteId
+            null, // parentId
+            'news1', // name
+            '/news/' // url
+        );
+        BlogCategoryFactory::make(['id' => 99, 'title' => 'title 99', 'name' => 'name-99', 'blog_content_id' => 1])->persist();
+        //正常系実行
+        $this->get('/baser/api/admin/bc-blog/blog_categories/view/99.json?token=' . $this->accessToken);
+        $this->assertResponseOk();
+        $result = json_decode((string)$this->_response->getBody());
+        $this->assertEquals('title 99', $result->blogCategory->title);
+        //異常系実行
+        $this->get('/baser/api/admin/bc-blog/blog_categories/view/111.json?token=' . $this->accessToken);
+        $this->assertResponseCode(404);
+
+
     }
 
     /**
@@ -157,8 +194,8 @@ class BlogCategoriesControllerTest extends BcTestCase
         $result = json_decode((string)$this->_response->getBody());
         $this->assertEquals('入力エラーです。内容を修正してください。', $result->message);
         $this->assertEquals(
-            'カテゴリ名はは半角英数字とハイフン、アンダースコアのみが利用可能です。',
-            $result->errors->name->alphaNumericDashUnderscore);
+            'カテゴリ名は半角英数字とハイフン、アンダースコアのみが利用可能です。',
+            $result->errors->name->alphaNumericPlus);
     }
 
     /**
@@ -203,7 +240,7 @@ class BlogCategoriesControllerTest extends BcTestCase
     public function test_delete()
     {
         BlogCategoryFactory::make(
-            ['id' => 11, 'name' => 'blog-category-delete', 'blog_content_id' => 1, 'title' => 'test title delete', 'lft' => 1, 'rght' => 2]
+            ['id' => 11, 'name' => 'blog-category-delete', 'blog_category_id' => 1, 'blog_content_id' => 1, 'title' => 'test title delete', 'lft' => 1, 'rght' => 2]
         )->persist();
         $this->post('/baser/api/admin/bc-blog/blog_categories/delete/11.json?token=' . $this->accessToken);
         $this->assertResponseOk();
@@ -214,4 +251,5 @@ class BlogCategoriesControllerTest extends BcTestCase
         $this->post('/baser/api/admin/bc-blog/blog_categories/delete/11.json?token=' . $this->accessToken);
         $this->assertResponseCode(404);
     }
+
 }

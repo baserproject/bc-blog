@@ -11,6 +11,7 @@
 
 namespace BcBlog\Test\TestCase\Controller\Api;
 
+use BaserCore\Test\Factory\ContentFactory;
 use BaserCore\Test\Factory\PermissionFactory;
 use BaserCore\Test\Scenario\InitAppScenario;
 use BaserCore\TestSuite\BcTestCase;
@@ -34,24 +35,6 @@ class BlogPostsControllerTest extends BcTestCase
     use BcContainerTrait;
 
     /**
-     * Fixtures
-     *
-     * @var array
-     */
-    public $fixtures = [
-        'plugin.BaserCore.Factory/Sites',
-        'plugin.BaserCore.Factory/Contents',
-        'plugin.BaserCore.Factory/SiteConfigs',
-        'plugin.BaserCore.Factory/Users',
-        'plugin.BaserCore.Factory/UsersUserGroups',
-        'plugin.BaserCore.Factory/UserGroups',
-        'plugin.BcBlog.Factory/BlogContents',
-        'plugin.BcBlog.Factory/BlogPosts',
-        'plugin.BaserCore.Factory/Dblogs',
-        'plugin.BaserCore.Factory/Permissions',
-    ];
-
-    /**
      * Access Token
      * @var string
      */
@@ -68,7 +51,6 @@ class BlogPostsControllerTest extends BcTestCase
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->loadFixtureScenario(InitAppScenario::class);
         $token = $this->apiLoginAdmin(1);
@@ -110,7 +92,8 @@ class BlogPostsControllerTest extends BcTestCase
     {
         // データを生成
         $this->loadFixtureScenario(BlogContentScenario::class, 1, 1, null, 'test', '/test');
-        BlogPostFactory::make(['id' => '1', 'blog_content_id' => '1', 'title' => 'blog post', 'status' => true])->persist();
+        BlogPostFactory::make(['id' => '1', 'blog_content_id' => '1', 'title' => 'blog post', 'eye_catch' => 'eye_catch.img', 'status' => true])->persist();
+        ContentFactory::make(['type' => 'BlogContent', 'entity_id' => 1])->persist();
         PermissionFactory::make()->allowGuest('/baser/api/*')->persist();
 
         // APIを呼ぶ
@@ -120,6 +103,7 @@ class BlogPostsControllerTest extends BcTestCase
         // 戻り値を確認
         $result = json_decode((string)$this->_response->getBody());
         $this->assertEquals(1, $result->blogPost->id);
+        $this->assertTextContains('/files/blog/1/blog_posts/eye_catch.img', $result->blogPost->_eyecatch);
         $this->assertEquals(1, $result->blogPost->blog_content_id);
 
         //存在しないBlogPostIDをテスト場合、

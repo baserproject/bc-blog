@@ -24,6 +24,7 @@ use BcBlog\Model\Entity\BlogPost;
 use BcBlog\Model\Table\BlogCommentsTable;
 use Cake\Datasource\EntityInterface;
 use Cake\Mailer\MailerAwareTrait;
+use Cake\ORM\Table;
 use Cake\ORM\TableRegistry;
 use Cake\Routing\Router;
 
@@ -40,6 +41,12 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      */
     use MailerAwareTrait;
     use BcContainerTrait;
+
+    /**
+     * BlogComments Table
+     * @var BlogCommentsTable|Table
+     */
+    public BlogCommentsTable|Table $BlogComments;
 
     /**
      * ブログコメントを初期化する
@@ -85,7 +92,9 @@ class BlogCommentsService implements BlogCommentsServiceInterface
         if (!empty($options['blog_post_id'])) {
             $query = $query->where(['BlogComments.blog_post_id' => $options['blog_post_id']]);
         }
-
+        if (!empty($options['blog_content_id'])) {
+            $query = $query->where(['BlogComments.blog_content_id' => $options['blog_content_id']]);
+        }
         if ($options['status'] === 'publish') {
             $query->where($this->BlogComments->BlogContents->Contents->getConditionAllowPublish());
         }
@@ -115,16 +124,19 @@ class BlogCommentsService implements BlogCommentsServiceInterface
             $conditions = array_merge($conditions, ['BlogComments.status' => true]);
         }
 
-        return $this->BlogComments->get($id, [
-            'contain' => ['BlogPosts' => ['BlogContents' => ['Contents']]],
-            'conditions' => $conditions
-        ]);
+        return $this->BlogComments->get($id,
+            contain: ['BlogPosts' => ['BlogContents' => ['Contents']]],
+            conditions: $conditions
+        );
     }
 
     /**
      * ブログコメントの初期値を取得する
      *
      * @return EntityInterface 初期値データ
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getNew()
     {
@@ -140,6 +152,8 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      * @param int $blogPostId
      * @param array $postData
      * @return EntityInterface
+     * @checked
+     * @unitTest 
      */
     public function add(int $blogContentId, int $blogPostId, array $postData)
     {
@@ -182,6 +196,9 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      *
      * @param $blogContentId
      * @return EntityInterface
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getBlogContent($blogContentId)
     {
@@ -194,6 +211,8 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      * @param EntityInterface|BlogComment $entity
      * @return void
      * @throws \Throwable
+     * @checked
+     * @noTodo
      */
     public function sendCommentToAdmin(EntityInterface $entity)
     {
@@ -234,6 +253,8 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      * @param EntityInterface|BlogComment $entity
      * @return void
      * @throws \Throwable
+     * @checked
+     * @noTodo
      */
     public function sendCommentToContributor(EntityInterface $entity)
     {

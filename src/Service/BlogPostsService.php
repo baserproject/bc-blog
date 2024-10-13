@@ -27,9 +27,11 @@ use Cake\Database\Driver\Postgres;
 use Cake\Database\Driver\Sqlite;
 use Cake\Datasource\ConnectionManager;
 use Cake\Datasource\EntityInterface;
+use Cake\Datasource\QueryInterface;
 use Cake\Http\Exception\NotFoundException;
 use Cake\I18n\FrozenTime;
 use Cake\ORM\Query;
+use Cake\ORM\Table;
 use Cake\ORM\TableRegistry;
 use Cake\Utility\Hash;
 
@@ -45,6 +47,12 @@ class BlogPostsService implements BlogPostsServiceInterface
      * Trait
      */
     use BcContainerTrait;
+
+    /**
+     * BlogPostsTable
+     * @var BlogPostsTable|Table
+     */
+    public BlogPostsTable|Table $BlogPosts;
 
     /**
      * Constructor
@@ -98,10 +106,11 @@ class BlogPostsService implements BlogPostsServiceInterface
             $conditions = $this->BlogPosts->getConditionAllowPublish();
             $conditions = array_merge($conditions, $this->BlogPosts->BlogContents->Contents->getConditionAllowPublish());
         }
-        $entity = $this->BlogPosts->get($id, [
-            'conditions' => $conditions,
-            'contain' => $options['contain']]);
-        if($options['draft'] === false) {
+        $entity = $this->BlogPosts->get($id,
+            conditions: $conditions,
+            contain: $options['contain']
+        );
+        if ($options['draft'] === false) {
             unset($entity->content_draft);
             unset($entity->detail_draft);
         }
@@ -144,10 +153,12 @@ class BlogPostsService implements BlogPostsServiceInterface
         unset($options['num'], $options['sort']);
 
         if ($options['id'] || $options['no']) $options['contain'][] = 'BlogComments';
+        if ($options['contain'] == null)
+            $options['contain'] = [];
         $query = $this->BlogPosts->find()->contain($options['contain']);
 
         if ($options['order']) {
-            $query->order($this->createOrder($options['order'], $options['direction']));
+            $query->orderBy($this->createOrder($options['order'], $options['direction']));
             unset($options['order'], $options['direction']);
         }
         if (!empty($options['limit'])) {
@@ -168,6 +179,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @param string $direction
      * @return string
      * @checked
+     * @unitTest
      */
     public function createOrder($sort, $direction)
     {
@@ -188,7 +200,7 @@ class BlogPostsService implements BlogPostsServiceInterface
                     break;
             }
         } else {
-            if(strpos($sort, '.') === false) {
+            if (strpos($sort, '.') === false) {
                 $sort = 'BlogPosts.' . $sort;
             }
             $order = "{$sort} {$direction}, BlogPosts.id {$direction}";
@@ -214,7 +226,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      */
     protected function createIndexConditions(Query $query, array $params)
     {
-        foreach ($params as $key => $value) {
+        foreach($params as $key => $value) {
             if ($value === '') unset($params[$key]);
         }
         if (empty($params)) return $query;
@@ -230,7 +242,6 @@ class BlogPostsService implements BlogPostsServiceInterface
             'site_id' => null,
             'category' => null,
             'keyword' => null,
-            'author' => null,
             'tag' => null,
             'year' => null,
             'month' => null,
@@ -249,17 +260,12 @@ class BlogPostsService implements BlogPostsServiceInterface
         // ステータス
         if (($params['status'] === 'publish' || (string)$params['status'] === '1') && !$params['preview']) {
             $conditions = $this->BlogPosts->getConditionAllowPublish();
-            if(empty($params['contain']) || $params['draft'] === false) {
-                $fields = $this->BlogPosts->getSchema()->columns();
-                if($params['draft'] === false) {
-                    unset($fields[array_search('content_draft', $fields)]);
-                    unset($fields[array_search('detail_draft', $fields)]);
-                }
-                $query->contain(['BlogContents' => ['Contents']])->select($fields);
-            } elseif(!isset($params['contain']['BlogContents']['Contents'])) {
-                $query->contain(array_merge_recursive($query->getContain(), ['BlogContents' => ['Contents']]));
-            }
             $conditions = array_merge($conditions, $this->BlogPosts->BlogContents->Contents->getConditionAllowPublish());
+            $query->contain(['BlogContents' => ['Contents']]);
+            if($params['draft'] === false) {
+                $query->selectAllExcept($this->BlogPosts, ['content_draft', 'detail_draft']);
+                $query = $this->selectContains($query);
+            }
         } elseif ((string)$params['status'] === '0') {
             $conditions = ['BlogPosts.status' => false];
         } else {
@@ -286,7 +292,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         }
         // タグ
         if (!is_null($params['blog_tag_id'])) {
-            $query->matching('BlogTags', function ($q) use ($params) {
+            $query->matching('BlogTags', function($q) use ($params) {
                 return $q->where(['BlogTags.id' => $params['blog_tag_id']]);
             });
         }
@@ -295,7 +301,7 @@ class BlogPostsService implements BlogPostsServiceInterface
             $blogCategoryIds = [$params['blog_category_id']];
             $children = $this->BlogPosts->BlogCategories->find('children', ['for' => $params['blog_category_id']]);
             if ($children) {
-                foreach ($children as $child) {
+                foreach($children as $child) {
                     $blogCategoryIds[] = $child->id;
                 }
             }
@@ -313,7 +319,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         }
         // タグ名
         if ($params['tag']) {
-            $conditions = $this->createTagCondition($conditions, $params['tag']);
+            $query = $this->createTagCondition($query, $params['tag']);
         }
         // 年月日
         if ($params['year'] || $params['month'] || $params['day']) {
@@ -335,11 +341,52 @@ class BlogPostsService implements BlogPostsServiceInterface
         if ($params['keyword']) {
             $conditions = $this->createKeywordCondition($conditions, $params['keyword']);
         }
-        // 作成者
-        if ($params['author']) {
-            $conditions = $this->createAuthorCondition($conditions, $params['author']);
-        }
         return $query->where($conditions);
+    }
+
+    /**
+     * Contains を select を前提として適用する
+     * select を利用した場合、関連テーブルのカラムを指定しないと、取得できないため
+     * @param Query $query
+     * @param array $contains
+     * @return Query
+     * @noTodo
+     * @checked
+     */
+    public function selectContains(Query $query, array $contains = [])
+    {
+        if(!$contains) $contains = $query->getContain();
+        if(isset($contains['BlogContents'])) {
+            $query->contain(['BlogContents' => function($q) {
+                return $q->select($this->BlogPosts->BlogContents);
+            }]);
+        }
+        if(isset($contains['BlogContents']['Contents'])) {
+            $query->contain(['BlogContents.Contents' => function($q) {
+                return $q->select($this->BlogPosts->BlogContents->Contents);
+            }]);
+        }
+        if(isset($contains['Users'])) {
+            $query->contain(['Users' => function($q) {
+                return $q->select($this->BlogPosts->Users);
+            }]);
+        }
+        if(isset($contains['BlogComments'])) {
+            $query->contain(['BlogComments' => function($q) {
+                return $q->select($this->BlogPosts->BlogComments);
+            }]);
+        }
+        if(isset($contains['BlogCategories'])) {
+            $query->contain(['BlogCategories' => function($q) {
+                return $q->select($this->BlogPosts->BlogCategories);
+            }]);
+        }
+        if(isset($contains['BlogTags'])) {
+            $query->contain(['BlogTags' => function($q) {
+                return $q->select($this->BlogPosts->BlogTags);
+            }]);
+        }
+        return $query;
     }
 
     /**
@@ -355,18 +402,31 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @unitTest
      */
     public function createCategoryCondition(
-        array  $conditions,
+        array $conditions,
         string $category,
-        int    $blogContentId = null,
-        string $contentUrl = null,
-        bool   $force = false)
+        int $blogContentId = null,
+        array|string $contentUrl = null,
+        bool $force = false)
     {
         $categoryConditions = ['BlogCategories.name' => $category];
         if ($blogContentId) {
             $categoryConditions['BlogCategories.blog_content_id'] = $blogContentId;
         } elseif ($contentUrl) {
-            $entityIdData = $this->BlogPosts->BlogContents->Contents->find('all', ['Contents.url' => $contentUrl])->first();
-            $categoryConditions['BlogCategories.blog_content_id'] = $entityIdData->entity_id;
+            $query = $this->BlogPosts->BlogContents->Contents->find()
+                ->select(['Contents.entity_id']);
+
+            if (is_array($contentUrl)) {
+                $query->where(['Contents.url IN' => $contentUrl]);
+            } else {
+                $query->where(['Contents.url' => $contentUrl]);
+            }
+
+            $entityIds = Hash::extract($query->toArray(), '{n}.entity_id');
+            if (count($entityIds) > 1) {
+                $categoryConditions['BlogCategories.blog_content_id IN'] = $entityIds;
+            } elseif(count($entityIds) === 1) {
+                $categoryConditions['BlogCategories.blog_content_id'] = $entityIds[0];
+            }
         } elseif (!$force) {
             trigger_error(__d('baser_core', 'blog_content_id を指定してください。'), E_USER_WARNING);
         }
@@ -393,30 +453,23 @@ class BlogPostsService implements BlogPostsServiceInterface
     /**
      * タグ条件を生成する
      *
-     * @param array $conditions
+     * @param Query $query
      * @param mixed $tag タグ（配列可）
-     * @return array
+     * @return QueryInterface
      * @checked
      * @noTodo
      * @unitTest
      */
-    public function createTagCondition($conditions, $tag)
+    public function createTagCondition(Query $query, $tag): QueryInterface
     {
         if (!is_array($tag)) $tag = [$tag];
         foreach($tag as $key => $value) {
             $tag[$key] = rawurldecode($value);
         }
-        $tags = $this->BlogPosts->BlogTags->find()
-            ->where(['BlogTags.name IN' => $tag])
-            ->contain(['BlogPosts'])
-            ->all()->toArray();
-        $postIds = Hash::extract($tags, '{n}.blog_posts.{n}.id');
-        if ($postIds) {
-            $conditions['BlogPosts.id IN'] = $postIds;
-        } else {
-            $conditions['BlogPosts.id IS'] = null;
-        }
-        return $conditions;
+        $query->matching('BlogTags', function($q) use ($tag) {
+            return $q->where(['BlogTags.name IN' => $tag]);
+        });
+        return $query;
     }
 
     /**
@@ -481,23 +534,6 @@ class BlogPostsService implements BlogPostsServiceInterface
     }
 
     /**
-     * 作成者の条件を作成する
-     *
-     * @param array $conditions
-     * @param string $author
-     * @return array
-     * @checked
-     * @noTodo
-     * @unitTest
-     */
-    public function createAuthorCondition($conditions, $author)
-    {
-        $user = $this->BlogPosts->Users->find()->where(['Users.name' => $author])->first();
-        $conditions['BlogPosts.user_id'] = $user->id;
-        return $conditions;
-    }
-
-    /**
      * 初期データ用のエンティティを取得
      *
      * @param int $userId
@@ -510,7 +546,7 @@ class BlogPostsService implements BlogPostsServiceInterface
     {
         return $this->BlogPosts->newEntity([
             'user_id' => $userId,
-            'posted' => FrozenTime::now(),
+            'posted' => \Cake\I18n\DateTime::now(),
             'status' => false,
             'blog_content_id' => $blogContentId
         ]);
@@ -538,10 +574,7 @@ class BlogPostsService implements BlogPostsServiceInterface
                 'blog_content_id を指定してください。',
             ));
         }
-        $postData['no'] = $this->BlogPosts->getMax('no', ['blog_content_id' => $postData['blog_content_id']]) + 1;
-        if (!empty($postData['posted'])) $postData['posted'] = new FrozenTime($postData['posted']);
-        if (!empty($postData['publish_begin'])) $postData['publish_begin'] = new FrozenTime($postData['publish_begin']);
-        if (!empty($postData['publish_end'])) $postData['publish_end'] = new FrozenTime($postData['publish_end']);
+        $postData['no'] = $this->BlogPosts->getMax('no', ['BlogPosts.blog_content_id' => $postData['blog_content_id']]) + 1;
         $blogPost = $this->BlogPosts->patchEntity($this->BlogPosts->newEmptyEntity(), $postData);
         return $this->BlogPosts->saveOrFail($blogPost);
     }
@@ -566,9 +599,6 @@ class BlogPostsService implements BlogPostsServiceInterface
                 ini_get('post_max_size')
             ));
         }
-        if (!empty($postData['posted'])) $postData['posted'] = new FrozenTime($postData['posted']);
-        if (!empty($postData['publish_begin'])) $postData['publish_begin'] = new FrozenTime($postData['publish_begin']);
-        if (!empty($postData['publish_end'])) $postData['publish_end'] = new FrozenTime($postData['publish_end']);
         $blogPost = $this->BlogPosts->patchEntity($post, $postData);
         return $this->BlogPosts->saveOrFail($blogPost);
     }
@@ -682,6 +712,7 @@ class BlogPostsService implements BlogPostsServiceInterface
     public function delete(int $id): bool
     {
         $blogPost = $this->BlogPosts->get($id);
+        $this->setupUpload($blogPost->blog_content_id);
         return $this->BlogPosts->delete($blogPost);
     }
 
@@ -710,7 +741,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      */
     public function getTitlesById(array $ids): array
     {
-        return $this->BlogPosts->find('list')->select(['id', 'title'])->where(['id IN' => $ids])->toArray();
+        return $this->BlogPosts->find('list')->select(['id', 'title'])->where(['BlogPosts.id IN' => $ids])->toArray();
     }
 
     /**
@@ -756,16 +787,16 @@ class BlogPostsService implements BlogPostsServiceInterface
     /**
      * 著者別記事一覧を取得
      *
-     * @param string $author
+     * @param int $userId
      * @param array $options
      * @return Query
      * @checked
      * @noTodo
      * @unitTest
      */
-    public function getIndexByAuthor(string $author, array $options = [])
+    public function getIndexByAuthor(int $userId, array $options = [])
     {
-        $options['author'] = $author;
+        $options['user_id'] = $userId;
         return $this->getIndex($options);
     }
 
@@ -820,7 +851,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      */
     public function getPrevPost(BlogPost $post)
     {
-        if(is_null($post->posted) || !$post->id) return null;
+        if (is_null($post->posted) || !$post->id) return null;
         $order = 'BlogPosts.posted DESC, BlogPosts.id DESC';
         // 投稿日が年月日時分秒が同一のデータの対応のため、投稿日が同じでIDが大きいデータを検索
         $conditions = array_merge_recursive([
@@ -857,7 +888,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      */
     public function getNextPost(BlogPost $post)
     {
-        if(is_null($post->posted) || !$post->id) return null;
+        if (is_null($post->posted) || !$post->id) return null;
         $order = 'BlogPosts.posted, BlogPosts.id';
         // 投稿日が年月日時分秒が同一のデータの対応のため、投稿日が同じでIDが小さいデータを検索
         $conditions = array_merge_recursive([
@@ -903,7 +934,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         ], $options);
 
         $tagNames = [];
-        foreach ($post->blog_tags as $tag) {
+        foreach($post->blog_tags as $tag) {
             $tagNames[] = rawurldecode($tag['name']);
         }
         $tags = $this->BlogPosts->BlogTags->find()->where(['BlogTags.name IN' => $tagNames])->contain('BlogPosts')->all()->toArray();
@@ -911,10 +942,10 @@ class BlogPostsService implements BlogPostsServiceInterface
         $ids = array_unique(Hash::extract($tags, '{n}.blog_posts.{n}.id'));
         if (!$ids) return [];
         return $this->BlogPosts->find()->where(array_merge([
-                ['BlogPosts.id IN ' => $ids],
-                ['BlogPosts.id <>' => $post->id],
-                'BlogPosts.blog_content_id' => $post->blog_content_id
-            ], $this->BlogPosts->getConditionAllowPublish()))
+            ['BlogPosts.id IN ' => $ids],
+            ['BlogPosts.id <>' => $post->id],
+            'BlogPosts.blog_content_id' => $post->blog_content_id
+        ], $this->BlogPosts->getConditionAllowPublish()))
             ->order($options['order'])
             ->limit($options['limit']);
     }
@@ -926,6 +957,9 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @param BlogPost $post
      * @param $full
      * @return string
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getUrl(Content $content, BlogPost $post, $full)
     {

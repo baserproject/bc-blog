@@ -21,6 +21,7 @@ use BcBlog\Service\BlogPostsService;
 use BcBlog\Service\BlogPostsServiceInterface;
 use BcBlog\Service\Front\BlogFrontService;
 use BcBlog\Service\Front\BlogFrontServiceInterface;
+use Cake\Core\Exception\CakeException;
 use Cake\Event\EventInterface;
 use BaserCore\Annotation\UnitTest;
 use BaserCore\Annotation\NoTodo;
@@ -58,37 +59,17 @@ class BlogController extends BlogFrontAppController
 
     /**
      * beforeFilter
-     *
      * @return void
+     * @checked
+     * @unitTest
      */
     public function beforeFilter(EventInterface $event)
     {
         $response = parent::beforeFilter($event);
         if($response) return $response;
-
-        $blogContentId = null;
-
-        if ($this->request->getParam('action') !== 'tags') {
-            if (!empty($this->request->getParam('entityId'))) {
-                $blogContentId = $this->request->getParam('entityId');
-            } elseif (!empty($this->request->getParam('pass'))) {
-                // 後方互換のため pass もチェック
-                $blogContentId = $this->request->getParam('pass');
-            }
-        }
-
-        if (empty($this->request->getAttribute('currentContent'))) {
-            // ウィジェット系の際にコンテンツ管理上のURLでないので自動取得できない
-            $content = $this->BcContents->getContent($blogContentId);
-            if ($content) {
-                $this->request = $this->request->withParam('Content', $content['Content']);
-                $this->request = $this->request->withParam('Site', $content['Site']);
-            }
-        }
-
         // コメント送信用のトークンを出力する為にセキュリティコンポーネントを利用しているが、
         // 表示用のコントローラーなのでポストデータのチェックは必要ない
-        $this->Security->setConfig('validatePost', false);
+        $this->FormProtection->setConfig('validate', false);
     }
 
     /**
@@ -99,14 +80,16 @@ class BlogController extends BlogFrontAppController
      * @param BlogPostsService $blogPostsService
      * @return void|ResponseInterface
      * @checked
+     * @noTodo
+     * @unitTest
      */
     public function index(
         BlogFrontServiceInterface $service,
         BlogContentsServiceInterface $blogContentsService,
         BlogPostsServiceInterface $blogPostsService)
     {
-
-        $blogContentId = (int)$this->getRequest()->getAttribute('currentContent')->entity_id;
+        $currentContent = $this->getRequest()->getAttribute('currentContent');
+        $blogContentId = (int)$currentContent?->entity_id;
 
         /* @var BlogContent $blogContent */
         $blogContent = $blogContentsService->get(
@@ -114,7 +97,7 @@ class BlogController extends BlogFrontAppController
             ['status' => 'publish']
         );
 
-        if ($this->RequestHandler->prefers('rss')) {
+        if ($this->getRequest()->is('rss')) {
             $listCount = $blogContent->feed_count;
         } else {
             $listCount = $blogContent->list_count;
@@ -129,13 +112,20 @@ class BlogController extends BlogFrontAppController
             $entities = $this->paginate($blogPostsService->getIndex([
                 'blog_content_id' => $blogContentId,
                 'limit' => $listCount,
-                'status' => 'publish'
-            ]));
+                'status' => 'publish',
+                'draft' => false,
+                'contain' => [
+                    'Users',
+                    'BlogCategories',
+                    'BlogContents' => ['Contents'],
+                    'BlogComments',
+                    'BlogTags',
+            ]]));
         } catch (NotFoundException $e) {
             return $this->redirect(['action' => 'index']);
         }
 
-        if ($this->RequestHandler->prefers('rss')) {
+        if ($this->getRequest()->is('rss')) {
             $this->set($service->getViewVarsForIndexRss(
                 $this->getRequest(),
                 $blogContent,
@@ -160,7 +150,7 @@ class BlogController extends BlogFrontAppController
      *
      * ### URL例
      * - カテゴリ別記事一覧： /news/archives/category/category-name
-     * - 作成者別記事一覧： /news/archives/author/author-name
+     * - 作成者別記事一覧： /news/archives/author/user-id
      * - タグ別記事一覧： /news/archives/tag/tag-name
      * - 年別記事一覧： /news/archives/date/2022
      * - 月別記事一覧： /news/archives/date/2022/12
@@ -174,6 +164,7 @@ class BlogController extends BlogFrontAppController
      * @return void
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function archives(
         BlogFrontServiceInterface $service,
@@ -196,8 +187,9 @@ class BlogController extends BlogFrontAppController
                     $this->paginate($blogPostsService->getIndexByCategory($category, array_merge([
                         'status' => 'publish',
                         'blog_content_id' => $blogContent->id,
-                        'direction' => $blogContent->list_direction
-                    ], $this->getRequest()->getQueryParams()))),
+                        'direction' => $blogContent->list_direction,
+                        'draft' => false
+                    ], $this->getRequest()->getQueryParams())), ['limit' => $blogContent->list_count]),
                     $category,
                     $this->getRequest(),
                     $blogContent,
@@ -206,35 +198,37 @@ class BlogController extends BlogFrontAppController
                 break;
 
             case 'author':
-				if(count($pass) > 2) $this->notFound();
-                $author = isset($pass[1])? $pass[1] : '';
+                if (count($pass) > 2) $this->notFound();
+                $userId = isset($pass[1]) ? (int) $pass[1] : '';
                 $this->set($service->getViewVarsForArchivesByAuthor(
-                    $this->paginate($blogPostsService->getIndexByAuthor($author, [
+                    $this->paginate($blogPostsService->getIndexByAuthor($userId, array_merge([
                         'status' => 'publish',
                         'blog_content_id' => $blogContent->id,
-                        'direction' => $blogContent->list_direction
-                    ])),
-                    $author,
+                        'direction' => $blogContent->list_direction,
+                        'draft' => false
+                    ], $this->getRequest()->getQueryParams())), ['limit' => $blogContent->list_count]),
+                    $userId,
                     $blogContent
                 ));
                 break;
 
             case 'tag':
-				if(count($pass) > 2) $this->notFound();
+                if (count($pass) > 2) $this->notFound();
                 $tag = isset($pass[1])? $pass[1] : '';
                 $this->set($service->getViewVarsForArchivesByTag(
-                    $this->paginate($blogPostsService->getIndexByTag($tag, [
+                    $this->paginate($blogPostsService->getIndexByTag($tag, array_merge([
                         'status' => 'publish',
                         'blog_content_id' => $blogContent->id,
-                        'direction' => $blogContent->list_direction
-                    ])),
+                        'direction' => $blogContent->list_direction,
+                        'draft' => false
+                    ], $this->getRequest()->getQueryParams())), ['limit' => $blogContent->list_count]),
                     $tag,
                     $blogContent
                 ));
                 break;
 
             case 'date':
-				if(count($pass) > 4) $this->notFound();
+                if (count($pass) > 4) $this->notFound();
                 $year = $month = $day = '';
                 if (isset($pass[1]) && preg_match('/^\d{4}$/', $pass[1])) {
                     $year = $pass[1];
@@ -246,11 +240,12 @@ class BlogController extends BlogFrontAppController
                     }
                 }
                 $this->set($service->getViewVarsForArchivesByDate(
-                    $this->paginate($blogPostsService->getIndexByDate($year, $month, $day, [
+                    $this->paginate($blogPostsService->getIndexByDate($year, $month, $day, array_merge([
                         'status' => 'publish',
                         'blog_content_id' => $blogContent->id,
-                        'direction' => $blogContent->list_direction
-                    ])),
+                        'direction' => $blogContent->list_direction,
+                        'draft' => false
+                    ], $this->getRequest()->getQueryParams())), ['limit' => $blogContent->list_count]),
                     $year,
                     $month,
                     $day,
@@ -259,7 +254,7 @@ class BlogController extends BlogFrontAppController
                 break;
 
             default:
-				if(count($pass) > 1) $this->notFound();
+                if (count($pass) > 1) $this->notFound();
                 $this->set($service->getViewVarsForSingle(
                     $this->getRequest(),
                     $blogContent,
@@ -276,37 +271,11 @@ class BlogController extends BlogFrontAppController
     }
 
     /**
-     * 記事リストを出力
-     * requestAction用
-     *
-     * @param int $blogContentId
-     * @param mixed $num
-     */
-    public function posts($blogContentId, $limit = 5)
-    {
-        if (!empty($this->request->getParam('named.template'))) {
-            $template = $this->request->getParam('named.template');
-        } else {
-            $template = 'posts';
-        }
-
-        $this->request->withParam('named.template', null);
-
-        $this->layout = null;
-        $this->contentId = $blogContentId;
-
-        $datas = $this->_getBlogPosts(['num' => $limit]);
-
-        $this->set('posts', $datas);
-
-        $this->render($this->blogContent['BlogContent']['template'] . DS . $template);
-    }
-
-    /**
      * 全体タグ一覧
      * @param $name
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function tags(BlogPostsServiceInterface $service, $name = null)
     {
@@ -331,6 +300,9 @@ class BlogController extends BlogFrontAppController
      *
      * 画像認証を行い認証されればブログのコメントを登録する
      * コメント承認を利用していないブログの場合、公開されているコメント投稿者にアラートを送信する
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function ajax_add_comment(BlogCommentsServiceInterface $service, BcCaptchaServiceInterface $bcCaptchaService)
     {
@@ -347,13 +319,13 @@ class BlogController extends BlogFrontAppController
         $blogContent = $service->getBlogContent($postData['blog_content_id']);
         try {
             if ($blogContent->auth_captcha && !$bcCaptchaService->check(
-                $this->getRequest(),
-                $this->getRequest()->getData('captcha_id'),
-                $this->getRequest()->getData('auth_captcha')
-            )) {
+                    $this->getRequest(),
+                    $this->getRequest()->getData('captcha_id'),
+                    $this->getRequest()->getData('auth_captcha')
+                )) {
                 $message = __d('baser_core', '画像の文字が間違っています。再度入力してください。');
                 return $this->response->withStatus(400)->withStringBody(json_encode([
-                    'message'=> $message
+                    'message' => $message
                 ]));
             }
             $entity = $service->add($postData['blog_content_id'], $postData['blog_post_id'], $postData);
@@ -367,19 +339,23 @@ class BlogController extends BlogFrontAppController
         } catch (BcException $e) {
             $message = $e->getMessage();
             return $this->response->withStatus(400)->withStringBody(json_encode([
-                'message'=> $message
+                'message' => $message
             ]));
         } catch (Throwable $e) {
             $message = __d('baser_core', 'データベース処理中にエラーが発生しました。' . $e->getMessage());
             return $this->response->withStatus(500)->withStringBody(json_encode([
-                'message'=> $message
+                'message' => $message
             ]));
         }
 
-        $service->sendCommentToAdmin($entity);
-        // コメント承認機能を利用していない場合は、公開されているコメント投稿者に送信
-        if (!$blogContent->comment_approve) {
-            $service->sendCommentToContributor($entity);
+        try {
+            $service->sendCommentToAdmin($entity);
+            // コメント承認機能を利用していない場合は、公開されているコメント投稿者に送信
+            if (!$blogContent->comment_approve) {
+                $service->sendCommentToContributor($entity);
+            }
+        } catch (CakeException $e) {
+            $this->log($e->getMessage());
         }
 
         $this->set([
@@ -393,6 +369,8 @@ class BlogController extends BlogFrontAppController
      * 認証用のキャプチャ画像を表示する
      *
      * @return void
+     * @checked
+     * @noTodo
      */
     public function captcha(BcCaptchaServiceInterface $service, string $token)
     {

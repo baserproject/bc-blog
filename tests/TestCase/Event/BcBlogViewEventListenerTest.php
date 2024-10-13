@@ -34,27 +34,12 @@ class BcBlogViewEventListenerTest extends BcTestCase
     use ScenarioAwareTrait;
 
     /**
-     * Fixtures
-     *
-     * @var array
-     */
-    public $fixtures = [
-        'plugin.BaserCore.Factory/Users',
-        'plugin.BaserCore.Factory/Sites',
-        'plugin.BaserCore.Factory/UsersUserGroups',
-        'plugin.BaserCore.Factory/UserGroups',
-        'plugin.BaserCore.Factory/Contents',
-        'plugin.BcBlog.Factory/BlogContents'
-    ];
-
-    /**
      * Setup
      *
      * @return void
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->Listener = new BcBlogViewEventListener();
         $this->loadFixtureScenario(InitAppScenario::class);

@@ -26,6 +26,8 @@ use BaserCore\Annotation\NoTodo;
 use BaserCore\Annotation\Checked;
 use BaserCore\Annotation\UnitTest;
 use Cake\Http\Exception\NotFoundException;
+use Cake\Http\Response;
+use Cake\ORM\Exception\PersistenceFailedException;
 
 /**
  * ブログ記事コントローラー
@@ -63,12 +65,16 @@ class BlogPostsController extends BlogAdminAppController
      * - エディタ用のヘルパーをセット
      *
      * @param EventInterface $event
+     * @return Response|null|void
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function beforeFilter(EventInterface $event)
     {
-        parent::beforeFilter($event);
+        $response = parent::beforeFilter($event);
+        if($response) return $response;
+
         $blogContentId = $this->request->getParam('pass.0');
         if (!$blogContentId) throw new BcException(__d('baser_core', '不正なURLです。'));
 
@@ -87,10 +93,6 @@ class BlogPostsController extends BlogAdminAppController
         /* @var BlogPostsService $service */
         $service = $this->getService(BlogPostsServiceInterface::class);
         $service->setupUpload($blogContentId);
-
-        if (BcSiteConfig::get('editor') && BcSiteConfig::get('editor') !== 'none') {
-            $this->viewBuilder()->addHelpers([BcSiteConfig::get('editor')]);
-        }
     }
 
     /**
@@ -101,7 +103,7 @@ class BlogPostsController extends BlogAdminAppController
      *
      * @param BlogPostsAdminServiceInterface $service
      * @param int $blogContentId
-     * @return void
+     * @return Response|void
      * @checked
      * @noTodo
      * @unitTest
@@ -128,14 +130,14 @@ class BlogPostsController extends BlogAdminAppController
         try {
             $this->paginate = [
                 'sortableFields' => [
-                    'BlogCategories.name'
+                    'no', 'name','BlogCategories.name','user_id','posted'
                 ]
             ];
             $entities = $this->paginate($service->getIndex(array_merge(
                 ['blog_content_id' => $blogContentId],
                 $this->getRequest()->getQueryParams()
             )));
-        } catch (NotFoundException $e) {
+        } catch (NotFoundException) {
             return $this->redirect(['action' => 'index', $blogContentId]);
         }
 
@@ -178,7 +180,7 @@ class BlogPostsController extends BlogAdminAppController
                     'data' => $post
                 ]);
                 $this->redirect(['action' => 'edit', $blogContentId, $post->id]);
-            } catch (\Cake\ORM\Exception\PersistenceFailedException $e) {
+            } catch (PersistenceFailedException $e) {
                 $post = $e->getEntity();
                 // 入力時アイキャッチの配列問題で表示がエラーとなるため、$this->request->data は空にする
                 $this->setRequest($this->getRequest()->withParsedBody([]));
@@ -234,7 +236,7 @@ class BlogPostsController extends BlogAdminAppController
                     'data' => $post
                 ]);
                 $this->redirect(['action' => 'edit', $blogContentId, $id]);
-            } catch (\Cake\ORM\Exception\PersistenceFailedException $e) {
+            } catch (PersistenceFailedException $e) {
                 $post = $e->getEntity();
                 // 入力時アイキャッチの配列問題で表示がエラーとなるため、$this->request->data は空にする
                 $this->setRequest($this->getRequest()->withParsedBody([]));
@@ -258,7 +260,7 @@ class BlogPostsController extends BlogAdminAppController
      * @param BlogPostsServiceInterface $service
      * @param int $blogContentId
      * @param int $id
-     * @return void
+     * @return Response|void
      * @checked
      * @noTodo
      * @unitTest
@@ -338,7 +340,7 @@ class BlogPostsController extends BlogAdminAppController
      * @param BlogPostsServiceInterface $service
      * @param int $blogContentId
      * @param int $id
-     * @return void
+     * @return Response|void
      * @checked
      * @noTodo
      * @unitTest

@@ -10,12 +10,14 @@
  */
 
 namespace BcBlog\Model\Table;
+
 use BaserCore\Annotation\UnitTest;
 use BaserCore\Annotation\NoTodo;
 use BaserCore\Annotation\Checked;
 use BaserCore\Service\PermissionsService;
 use BaserCore\Service\PermissionsServiceInterface;
 use BaserCore\Utility\BcContainerTrait;
+use Cake\Datasource\EntityInterface;
 use Cake\Routing\Router;
 use Cake\Validation\Validator;
 
@@ -83,7 +85,7 @@ class BlogTagsTable extends BlogAppTable
                     'rule' => 'validateUnique',
                     'provider' => 'table',
                     'message' => __d('baser_core', '既に登録のあるタグです。')
-        ]]);
+                ]]);
         return $validator;
     }
 
@@ -94,6 +96,7 @@ class BlogTagsTable extends BlogAppTable
      * @param int $blogContentId ブログコンテンツID
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function hasNewTagAddablePermission($userGroupId, $blogContentId)
     {
@@ -112,15 +115,56 @@ class BlogTagsTable extends BlogAppTable
     /**
      * 指定した名称のブログタグ情報を取得する
      *
-     * @param string $name
-     * @return array
+     * @param $name
+     * @return EntityInterface
      */
     public function getByName($name)
     {
-        return $this->find('first', [
-            'conditions' => ['BlogTag.name' => $name],
-            'recursive' => -1,
-            'callbacks' => false,
+        return $this->find()->where(['BlogTags.name' => $name])->first();
+    }
+
+    /**
+     * コピーする
+     * @param $id
+     * @return EntityInterface
+     * @throws \Throwable
+     * @checked
+     * @noTodo
+     * @unitTest
+     */
+    public function copy($id)
+    {
+        $entity = $this->find()->where(['BlogTags.id' => $id])->first();
+        $oldEntity = clone $entity;
+
+        // EVENT BlogTags.beforeCopy
+        $event = $this->dispatchLayerEvent('beforeCopy', [
+            'data' => $entity,
+            'id' => $id,
         ]);
+        if ($event !== false) {
+            $entity = ($event->getResult() === null || $event->getResult() === true)? $event->getData('data') : $event->getResult();
+        }
+
+        $entity->name .= '_copy';
+        unset($entity->id);
+        unset($entity->created);
+        unset($entity->modified);
+
+        try {
+            $entity = $this->saveOrFail($this->patchEntity($this->newEmptyEntity(), $entity->toArray()));
+
+            // EVENT BlogTags.afterCopy
+            $this->dispatchLayerEvent('afterCopy', [
+                'id' => $entity->id,
+                'data' => $entity,
+                'oldId' => $id,
+                'oldData' => $oldEntity,
+            ]);
+
+            return $entity;
+        } catch (\Throwable $e) {
+            throw $e;
+        }
     }
 }

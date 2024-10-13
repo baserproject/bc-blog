@@ -16,6 +16,7 @@ use BaserCore\Utility\BcContainerTrait;
 use BaserCore\Utility\BcSiteConfig;
 use BaserCore\Utility\BcUtil;
 use BcBlog\Model\Entity\BlogContent;
+use BcBlog\Model\Entity\BlogPost;
 use BcBlog\Service\BlogCategoriesService;
 use BcBlog\Service\BlogCategoriesServiceInterface;
 use BcBlog\Service\BlogContentsService;
@@ -24,6 +25,7 @@ use BcBlog\Service\BlogPostsService;
 use BcBlog\Service\BlogPostsServiceInterface;
 use Cake\Controller\Controller;
 use Cake\Datasource\EntityInterface;
+use Cake\Datasource\Paging\PaginatedResultSet;
 use Cake\Http\Exception\NotFoundException;
 use Cake\Http\ServerRequest;
 use BaserCore\Annotation\UnitTest;
@@ -31,7 +33,6 @@ use BaserCore\Annotation\NoTodo;
 use BaserCore\Annotation\Checked;
 use Cake\ORM\ResultSet;
 use Cake\ORM\TableRegistry;
-use Cake\I18n\FrozenTime;
 
 /**
  * BlogFrontService
@@ -47,6 +48,24 @@ class BlogFrontService implements BlogFrontServiceInterface
      * Trait
      */
     use BcContainerTrait;
+
+    /**
+     * BlogContentsService
+     * @var BlogContentsService|BlogContentsServiceInterface
+     */
+    public BlogContentsService|BlogContentsServiceInterface $BlogContentsService;
+
+    /**
+     * BlogPostsService
+     * @var BlogPostsService|BlogPostsServiceInterface
+     */
+    public BlogPostsService|BlogPostsServiceInterface $BlogPostsService;
+
+    /**
+     * BlogCategoriesService
+     * @var BlogCategoriesService|BlogCategoriesServiceInterface
+     */
+    public BlogCategoriesService|BlogCategoriesServiceInterface $BlogCategoriesService;
 
     /**
      * Constructor
@@ -73,7 +92,7 @@ class BlogFrontService implements BlogFrontServiceInterface
      * @unitTest
      * @noTodo
      */
-    public function getViewVarsForIndex(ServerRequest $request, BlogContent $blogContent, ResultSet $posts): array
+    public function getViewVarsForIndex(ServerRequest $request, BlogContent $blogContent, PaginatedResultSet|ResultSet $posts): array
     {
         return [
             'blogContent' => $blogContent,
@@ -97,6 +116,10 @@ class BlogFrontService implements BlogFrontServiceInterface
      * @param BlogContent $blogContent
      * @param ResultSet $posts
      * @return array
+     *
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getViewVarsForIndexRss(ServerRequest $request, BlogContent $blogContent, ResultSet $posts): array
     {
@@ -142,6 +165,7 @@ class BlogFrontService implements BlogFrontServiceInterface
             $controller->getRequest(),
             $blogContent,
             $controller->paginate($this->BlogPostsService->getIndex([
+                'blog_content_id' => $blogContent->id,
                 'limit' => $blogContent->list_count,
                 'status' => 'publish'
             ]))
@@ -152,7 +176,7 @@ class BlogFrontService implements BlogFrontServiceInterface
     /**
      * カテゴリー別アーカイブ一覧の view 変数を取得する
      *
-     * @param ResultSet $posts
+     * @param ResultSet|PaginatedResultSet $posts
      * @param string $category
      * @param ServerRequest $request
      * @param EntityInterface $blogContent
@@ -163,7 +187,7 @@ class BlogFrontService implements BlogFrontServiceInterface
      * @unitTest
      */
     public function getViewVarsForArchivesByCategory(
-        ResultSet $posts,
+        ResultSet|PaginatedResultSet $posts,
         string $category,
         ServerRequest $request,
         EntityInterface $blogContent,
@@ -181,6 +205,7 @@ class BlogFrontService implements BlogFrontServiceInterface
         return [
             'posts' => $posts,
             'blogCategory' => $blogCategory,
+            'blogContent' => $blogContent,
             'blogArchiveType' => 'category',
             'crumbs' => array_merge($crumbs, $this->getCategoryCrumbs(
                 $request->getAttribute('currentContent')->url,
@@ -203,7 +228,7 @@ class BlogFrontService implements BlogFrontServiceInterface
     public function getCategoryCrumbs(string $baseUrl, int $categoryId, $isCategoryPage = true): array
     {
         $blogCategoriesTable = TableRegistry::getTableLocator()->get('BcBlog.BlogCategories');
-        $query = $blogCategoriesTable->find('path', ['for' => $categoryId])->select(['name', 'title']);
+        $query = $blogCategoriesTable->find('path', for: $categoryId)->select(['name', 'title']);
         $count = $query->count();
         $crumbs = [];
         if ($count <= 1 && $isCategoryPage) return $crumbs;
@@ -223,22 +248,24 @@ class BlogFrontService implements BlogFrontServiceInterface
 
     /**
      * 著者別アーカイブ一覧の view 用変数を取得する
-     * @param ResultSet $posts
-     * @param string $author
+     * @param ResultSet|PaginatedResultSet $posts
+     * @param int $userId
+     * @param BlogContent $blogContent
      * @return array
      * @checked
      * @noTodo
      * @unitTest
      */
-    public function getViewVarsForArchivesByAuthor(ResultSet $posts, string $author, BlogContent $blogContent): array
+    public function getViewVarsForArchivesByAuthor(ResultSet|PaginatedResultSet $posts, int $userId, BlogContent $blogContent): array
     {
         $usersTable = TableRegistry::getTableLocator()->get('BaserCore.Users');
-        $author = $usersTable->find('available')->where(['Users.name' => $author])->first();
+        $author = $usersTable->find('available')->where(['Users.id' => $userId])->first();
         if (!$author) {
             throw new NotFoundException();
         }
         return [
             'posts' => $posts,
+            'blogContent' => $blogContent,
             'blogArchiveType' => 'author',
             'author' => $author,
             'currentWidgetAreaId' => $blogContent->widget_area?? BcSiteConfig::get('widget_area')
@@ -248,7 +275,7 @@ class BlogFrontService implements BlogFrontServiceInterface
     /**
      * タグ別アーカイブ一覧の view 用変数を取得する
      *
-     * @param ResultSet $posts
+     * @param ResultSet|PaginatedResultSet $posts
      * @param string $tag
      * @param BlogContent $blogContent
      * @return array
@@ -256,13 +283,14 @@ class BlogFrontService implements BlogFrontServiceInterface
      * @noTodo
      * @unitTest
      */
-    public function getViewVarsForArchivesByTag(ResultSet $posts, string $tag, BlogContent $blogContent): array
+    public function getViewVarsForArchivesByTag(ResultSet|PaginatedResultSet $posts, string $tag, BlogContent $blogContent): array
     {
         $tagsTable = TableRegistry::getTableLocator()->get('BcBlog.BlogTags');
         $tag = $tagsTable->find()->where(['name' => urldecode($tag)])->first();
         if (!$blogContent->tag_use || !$tag) throw new NotFoundException();
         return [
             'posts' => $posts,
+            'blogContent' => $blogContent,
             'blogArchiveType' => 'tag',
             'blogTag' => $tag,
             'currentWidgetAreaId' => $blogContent->widget_area?? BcSiteConfig::get('widget_area')
@@ -272,17 +300,18 @@ class BlogFrontService implements BlogFrontServiceInterface
     /**
      * 日付別アーカイブ一覧の view 用変数を取得する
      *
-     * @param ResultSet $posts
+     * @param ResultSet|PaginatedResultSet $posts
      * @param string $year
      * @param string $month
      * @param string $day
+     * @param BlogContent $blogContent
      * @return array
      * @checked
      * @noTodo
      * @unitTest
      */
     public function getViewVarsForArchivesByDate(
-        ResultSet $posts,
+        ResultSet|PaginatedResultSet $posts,
         string $year,
         string $month,
         string $day,
@@ -305,7 +334,8 @@ class BlogFrontService implements BlogFrontServiceInterface
             'year' => $year,
             'month' => $month,
             'day' => $day,
-            'currentWidgetAreaId' => $blogContent->widget_area?? BcSiteConfig::get('widget_area')
+            'currentWidgetAreaId' => $blogContent->widget_area?? BcSiteConfig::get('widget_area'),
+            'blogContent' => $blogContent
         ];
     }
 
@@ -392,9 +422,6 @@ class BlogFrontService implements BlogFrontServiceInterface
             if ($request->getQuery('preview') === 'draft') {
                 $postArray['detail'] = $postArray['detail_draft'];
             }
-            if (!empty($postArray['posted'])) $postArray['posted'] = new FrozenTime($postArray['posted']);
-            if (!empty($postArray['publish_begin'])) $postArray['publish_begin'] = new FrozenTime($postArray['publish_begin']);
-            if (!empty($postArray['publish_end'])) $postArray['publish_end'] = new FrozenTime($postArray['publish_end']);
 
             $vars['post'] = $this->BlogPostsService->BlogPosts->patchEntity(
                 $vars['post'] ?? $this->BlogPostsService->BlogPosts->newEmptyEntity(),
@@ -405,7 +432,7 @@ class BlogFrontService implements BlogFrontServiceInterface
             if ($validationErrors) {
                 foreach($validationErrors as $columnsErros) {
                     foreach($columnsErros as $error) {
-                        throw new NotFoundException(__d('baser_core', $error));
+                        throw new NotFoundException($error);
                     }
                 }
             }
@@ -467,6 +494,9 @@ class BlogFrontService implements BlogFrontServiceInterface
      * @param int $blogContentId
      * @param bool $viewCount
      * @return array|false
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getViewVarsForBlogAuthorArchivesWidget(int $blogContentId, bool $viewCount)
     {
@@ -489,6 +519,7 @@ class BlogFrontService implements BlogFrontServiceInterface
      * @return array
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getViewVarsForBlogCalendarWidget(int $blogContentId, string $year = '', string $month = '')
     {
@@ -525,6 +556,7 @@ class BlogFrontService implements BlogFrontServiceInterface
      * @return array
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getViewVarsForBlogCategoryArchivesWidget(
         int $blogContentId,
@@ -553,6 +585,9 @@ class BlogFrontService implements BlogFrontServiceInterface
      * @param bool $limit
      * @param bool $viewCount
      * @return array
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getViewVarsForBlogYearlyArchivesWidget(
         int $blogContentId,
@@ -577,6 +612,9 @@ class BlogFrontService implements BlogFrontServiceInterface
      * @param int $limit
      * @param bool $viewCount
      * @return array
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getViewVarsBlogMonthlyArchivesWidget(
         int $blogContentId,
@@ -599,6 +637,10 @@ class BlogFrontService implements BlogFrontServiceInterface
      * @param int $blogContentId
      * @param int $limit
      * @return array
+     *
+     * @noTodo
+     * @checked
+     * @unitTest
      */
     public function getViewVarsRecentEntriesWidget(int $blogContentId, int $limit = 5)
     {

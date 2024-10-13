@@ -34,30 +34,12 @@ class BlogCommentsControllerTest extends BcTestCase
     use ScenarioAwareTrait;
 
     /**
-     * Fixtures
-     *
-     * @var array
-     */
-    public $fixtures = [
-        'plugin.BaserCore.Factory/Sites',
-        'plugin.BaserCore.Factory/SiteConfigs',
-        'plugin.BaserCore.Factory/Users',
-        'plugin.BaserCore.Factory/UsersUserGroups',
-        'plugin.BaserCore.Factory/UserGroups',
-        'plugin.BcBlog.Factory/BlogComments',
-        'plugin.BcBlog.Factory/BlogContents',
-        'plugin.BaserCore.Factory/Contents',
-        'plugin.BcBlog.Factory/BlogPosts',
-    ];
-
-    /**
      * set up
      *
      * @return void
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->loadFixtureScenario(InitAppScenario::class);
         $this->Controller = new BlogCommentsController($this->loginAdmin($this->getRequest()));
@@ -78,7 +60,27 @@ class BlogCommentsControllerTest extends BcTestCase
      */
     public function testIndex()
     {
-        $this->markTestIncomplete('このテストは、まだ実装されていません。');
+        //準備
+        $this->enableSecurityToken();
+        $this->enableCsrfToken();
+        $this->loadFixtureScenario(
+            BlogContentScenario::class,
+            1,  // id
+            1, // siteId
+            null, // parentId
+            'news1', // name
+            '/news/' // url
+        );
+        $this->loadFixtureScenario(BlogCommentsServiceScenario::class);
+        //正常系実行
+        $this->post("/baser/admin/bc-blog/blog_comments/index/1");
+        $vars = $this->_controller->viewBuilder()->getVars()['blogComments'];
+        $this->assertCount(1, $vars);
+        $this->assertResponseOk();
+        //異常系実行
+        $this->post("/baser/admin/bc-blog/blog_comments/index/99");
+        //リダイレクトを確認
+        $this->assertResponseCode(404);
     }
 
     /**

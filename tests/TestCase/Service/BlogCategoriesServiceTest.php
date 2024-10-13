@@ -31,19 +31,6 @@ class BlogCategoriesServiceTest extends \BaserCore\TestSuite\BcTestCase
     use IntegrationTestTrait;
 
     /**
-     * Fixtures
-     *
-     * @var array
-     */
-    protected $fixtures = [
-        'plugin.BcBlog.Factory/BlogCategories',
-        'plugin.BcBlog.Factory/BlogComments',
-        'plugin.BcBlog.Factory/BlogContents',
-        'plugin.BaserCore.Factory/Contents',
-        'plugin.BcBlog.Factory/BlogPosts',
-    ];
-
-    /**
      * @var BlogCategoriesService|null
      */
     public $BlogCategories = null;
@@ -55,7 +42,6 @@ class BlogCategoriesServiceTest extends \BaserCore\TestSuite\BcTestCase
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->BlogCategories = new BlogCategoriesService();
     }
@@ -137,7 +123,7 @@ class BlogCategoriesServiceTest extends \BaserCore\TestSuite\BcTestCase
 
         BlogCategoryFactory::make(['id' => 60, 'blog_content_id' => 29, 'title' => '_test'])->persist();
         $categories = $this->BlogCategories->getTreeIndex(29, []);
-        $this->assertEquals('&nbsp;&nbsp;&nbsp;&nbsp;└_test', $categories[0]->layered_title);
+        $this->assertEquals('　└_test', $categories[0]->layered_title);
     }
 
     /**
@@ -162,17 +148,17 @@ class BlogCategoriesServiceTest extends \BaserCore\TestSuite\BcTestCase
         $this->assertEquals($expected, $result, 'コントロールソースを正しく取得できません');
     }
 
-    public function getControlSourceDataProvider(): array
+    public static function getControlSourceDataProvider(): array
     {
         return [
             ['parent_id', [], false],
             [
                 'parent_id',
                 ['conditions' => ['BlogCategories.status' => 1], 'blogContentId' => 19],
-                [59 => 'test', 60 => '　　　└test']
+                [59 => 'test', 60 => '　└test']
             ],
-            ['parent_id',['blogContentId' => 19], [59 => 'test', 60 => '　　　└test']],
-            ['parent_id', ['blogContentId' => 19, 'excludeParentId' => 59], [60 => '　　　└test']],
+            ['parent_id',['blogContentId' => 19], [59 => 'test', 60 => '　└test']],
+            ['parent_id', ['blogContentId' => 19, 'excludeParentId' => 59], [60 => '　└test']],
         ];
     }
 

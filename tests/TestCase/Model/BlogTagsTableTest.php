@@ -11,8 +11,12 @@
 
 namespace BcBlog\Test\TestCase\Model;
 
+use BaserCore\Test\Factory\UserGroupFactory;
 use BaserCore\TestSuite\BcTestCase;
 use BcBlog\Model\Table\BlogTagsTable;
+use BcBlog\Test\Factory\BlogTagFactory;
+use Cake\Event\Event;
+use Cake\ORM\TableRegistry;
 
 /**
  * Class BlogTagsTableTest
@@ -21,12 +25,6 @@ use BcBlog\Model\Table\BlogTagsTable;
  */
 class BlogTagsTableTest extends BcTestCase
 {
-
-    public $fixtures = [
-        'plugin.BcBlog.Factory/BlogPosts',
-        'plugin.BcBlog.Factory/BlogPostsBlogTags',
-        'plugin.BcBlog.Factory/BlogTags',
-    ];
 
     /**
      * Set Up
@@ -129,7 +127,7 @@ class BlogTagsTableTest extends BcTestCase
         $this->assertEquals($expected, $result);
     }
 
-    public function findCustomParamsDataProvider()
+    public static function findCustomParamsDataProvider()
     {
         return [
             ['count', 5, []],
@@ -151,12 +149,14 @@ class BlogTagsTableTest extends BcTestCase
      */
     public function testGetByName($name, $expects)
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $result = $this->BlogTag->getByName($name);
-        $this->assertEquals($expects, (bool)$result);
+        BlogTagFactory::make(['name' => 'タグ１'])->persist();
+        BlogTagFactory::make(['name' => 'タグ２'])->persist();
+        $rs = $this->BlogTagsTable->getByName($name);
+        //戻り値を確認
+        $this->assertEquals($expects, (bool)$rs);
     }
 
-    public function getByNameDataProvider()
+    public static function getByNameDataProvider()
     {
         return [
             ['タグ１', true],
@@ -165,5 +165,78 @@ class BlogTagsTableTest extends BcTestCase
             ['%90V%90%BB%95i', false], // 文字列 新製品 をURLエンコード化
             ['hoge', false],
         ];
+    }
+
+    /**
+     * test beforeCopyEvent
+     */
+    public function testBeforeCopyEvent()
+    {
+        BlogTagFactory::make(['id' => 1, 'name' => 'test'])->persist();
+        //イベントをコル
+        $this->entryEventToMock(self::EVENT_LAYER_MODEL, 'BcBlog.BlogTags.beforeCopy', function (Event $event) {
+            $data = $event->getData('data');
+            $data['name'] = 'beforeCopy';
+            $event->setData('data', $data);
+        });
+        $this->BlogTagsTable->copy(1);
+        //イベントに入るかどうか確認
+        $blogTags = $this->getTableLocator()->get('BcBlog.BlogTags');
+        $query = $blogTags->find()->where(['name' => 'beforeCopy_copy']);
+        $this->assertEquals(1, $query->count());
+    }
+
+    /**
+     * test AfterCopyEvent
+     */
+    public function testAfterCopyEvent()
+    {
+        BlogTagFactory::make(['id' => 1, 'name' => 'test'])->persist();
+        //イベントをコル
+        $this->entryEventToMock(self::EVENT_LAYER_MODEL, 'BcBlog.BlogTags.afterCopy', function (Event $event) {
+            $data = $event->getData('data');
+            $blogTags = TableRegistry::getTableLocator()->get('BcBlog.BlogTags');
+            $data->name = 'afterAdd';
+            $blogTags->save($data);
+        });
+        $this->BlogTagsTable->copy(1);
+        //イベントに入るかどうか確認
+        $blogTags = $this->getTableLocator()->get('BcBlog.BlogTags');
+        $query = $blogTags->find()->where(['name' => 'afterAdd']);
+        $this->assertEquals(1, $query->count());
+    }
+
+    /**
+     * test copy
+     */
+    public function test_copy()
+    {
+        //データを生成
+        BlogTagFactory::make(['id' => 1, 'name' => 'test'])->persist();
+        //対象メソッドを呼ぶ
+        $rs = $this->BlogTagsTable->copy(1);
+
+        //戻る値を確認
+        $this->assertEquals('test_copy', $rs['name']);
+
+        //DBに存在するか確認すること
+        $blogTags = $this->getTableLocator()->get('BcBlog.BlogTags');
+        $query = $blogTags->find()->where(['name' => 'test_copy']);
+        $this->assertEquals(1, $query->count());
+    }
+
+    /**
+     * test hasNewTagAddablePermission
+     */
+    public function test_hasNewTagAddablePermission()
+    {
+        //データーを生成
+        UserGroupFactory::make(['id' => 2])->persist();
+
+        //アクセス制限がある場合、
+        $this->assertTrue($this->BlogTagsTable->hasNewTagAddablePermission([1], 1));
+
+        //アクセス制限がない場合、
+        $this->assertFalse($this->BlogTagsTable->hasNewTagAddablePermission([2], 1));
     }
 }

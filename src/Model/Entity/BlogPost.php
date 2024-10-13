@@ -14,8 +14,10 @@ namespace BcBlog\Model\Entity;
 use BaserCore\Annotation\UnitTest;
 use BaserCore\Annotation\NoTodo;
 use BaserCore\Annotation\Checked;
+use BcBlog\View\Helper\BlogHelper;
 use Cake\I18n\FrozenTime;
 use Cake\ORM\Entity;
+use Cake\View\View;
 
 /**
  * Class BlogPost
@@ -29,15 +31,15 @@ use Cake\ORM\Entity;
  * @property int $blog_category_id
  * @property int $user_id
  * @property bool $status
- * @property FrozenTime $posted
+ * @property \Cake\I18n\DateTime $posted
  * @property string $content_draft
  * @property string $detail_draft
- * @property FrozenTime $publish_begin
- * @property FrozenTime $publish_end
+ * @property \Cake\I18n\DateTime $publish_begin
+ * @property \Cake\I18n\DateTime $publish_end
  * @property bool $exclude_search
  * @property string $eye_catch
- * @property FrozenTime $created
- * @property FrozenTime $modified
+ * @property \Cake\I18n\DateTime $created
+ * @property \Cake\I18n\DateTime $modified
  * @property BlogContent $blog_content
  */
 class BlogPost extends Entity
@@ -48,9 +50,30 @@ class BlogPost extends Entity
      *
      * @var array
      */
-    protected $_accessible = [
+    protected array $_accessible = [
         '*' => true,
         'id' => false
     ];
+
+    /**
+     * アイキャッチのフルパス
+     */
+    protected array $_virtual = ['_eyecatch'];
+
+    /**
+     * アイキャッチのフルパスを取得
+     * @return string
+     * @checked
+     * @noTodo
+     * @unitTest
+     */
+    protected function _get_eyecatch(){
+        try {
+            $BlogHelper = new BlogHelper(new View());
+            return $BlogHelper->getEyeCatch($this, ['output' => 'url']);
+        } catch (\Throwable) {
+            return '';
+        }
+    }
 
 }

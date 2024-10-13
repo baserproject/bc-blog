@@ -19,7 +19,9 @@ use BaserCore\Test\Scenario\SmallSetContentsScenario;
 use BaserCore\TestSuite\BcTestCase;
 use BcBlog\Service\BlogContentsService;
 use BcBlog\Test\Factory\BlogContentFactory;
+use BcBlog\Test\Scenario\BlogContentScenario;
 use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\ORM\Entity;
 use Cake\TestSuite\IntegrationTestTrait;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
 
@@ -37,31 +39,12 @@ class BlogContentsServiceTest extends BcTestCase
     use IntegrationTestTrait;
 
     /**
-     * Fixtures
-     *
-     * @var array
-     */
-    public $fixtures = [
-        'plugin.BaserCore.Factory/Sites',
-        'plugin.BaserCore.Factory/Users',
-        'plugin.BaserCore.Factory/UserGroups',
-        'plugin.BaserCore.Factory/UsersUserGroups',
-        'plugin.BaserCore.Factory/Contents',
-        'plugin.BaserCore.Factory/ContentFolders',
-        'plugin.BaserCore.Factory/Pages',
-        'plugin.BaserCore.Factory/SiteConfigs',
-        'plugin.BaserCore.Factory/SearchIndexes',
-        'plugin.BcBlog.Factory/BlogContents',
-    ];
-
-    /**
      * Set Up
      *
      * @return void
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->BlogContentsService = new BlogContentsService();
     }
@@ -255,6 +238,30 @@ class BlogContentsServiceTest extends BcTestCase
     }
 
     /**
+     * test checkRequireSearchIndexReconstruction
+     * @dataProvider checkRequireSearchIndexReconstructionProvider
+     */
+    public function test_checkRequireSearchIndexReconstruction($beforeValue, $afterValue, $expected)
+    {
+        $before = new Entity($beforeValue);
+        $after = new Entity($afterValue);
+        $rs = $this->BlogContentsService->checkRequireSearchIndexReconstruction($before, $after);
+        $this->assertEquals($rs, $expected);
+    }
+
+    public static function checkRequireSearchIndexReconstructionProvider()
+    {
+        return [
+            [['name' => 'name 1'], ['name' => 'name 2'], true], //$before->name !== $after->name; return true
+            [['name' => 'name 1'], ['name' => 'name 1'], false], //$before->name == $after->name; return false
+            [['status' => 'status 1'], ['status' => 'status 2'], true], //$before->status !== $after->status; return true
+            [['status' => 'status 1'], ['status' => 'status 1'], false], //$before->status == $after->status; return false
+            [['parent_id' => 1], ['parent_id' => 2], true], //$before->parent_id !== $after->parent_id; return true
+            [['parent_id' => 1], ['parent_id' => 1], false], //$before->status == $after->status; return false
+        ];
+    }
+
+    /**
      * test delete
      */
     public function test_delete()
@@ -275,19 +282,62 @@ class BlogContentsServiceTest extends BcTestCase
      */
     public function testGetControlSource($field, $expected)
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です。BlogContentsTableより移植');
-        $result = $this->BlogContent->getControlSource($field);
+        if ($field == 'id') {
+            BlogContentFactory::make(['id' => 2])->persist();
+            ContentFactory::make([
+                'id' => 2,
+                'title' => 'news',
+                'plugin' => 'BcBlog',
+                'type' => 'BlogContent',
+                'entity_id' => 2
+            ])->persist();
+        }
+        $result = $this->BlogContentsService->getControlSource($field);
         $this->assertEquals($result, $expected);
     }
 
-    public function getControlSourceDataProvider()
+    public static function getControlSourceDataProvider()
     {
         return [
-            [null, false],
-            ['', false],
-            ['hoge', false],
-            ['id', ['1' => '新着情報']],
+            [null, false], //$field = null; return false
+            ['', false], //$field = ''; return false
+            ['hoge', false], //$field が存在しない; return false
+            ['id', ['2' => 'news']], //$field がid; return コンテンツタイトル
         ];
     }
 
+    /**
+     * test getContentsTemplateRelativePath
+     */
+    public function test_getContentsTemplateRelativePath()
+    {
+        //データを生成
+        $this->loadFixtureScenario(BlogContentScenario::class, 1, 1, null, 'test', '/test');
+
+        //contentsTemplateは値がある場合、
+        $rs = $this->BlogContentsService->getContentsTemplateRelativePath(['contentsTemplate' => 'contentsTemplate']);
+        $this->assertEquals($rs, 'BcBlog.../Blog/contentsTemplate/posts');
+
+        //contentsTemplateは値がない、かつBlogContentsにcontentUrlが存在する場合、
+        $rs = $this->BlogContentsService->getContentsTemplateRelativePath(['contentUrl' => ['/test']]);
+        $this->assertEquals($rs, 'BcBlog.../Blog/default/posts');
+
+        //contentsTemplateは値がない、かつBlogContentsにcontentUrlが存在しない場合、
+        $rs = $this->BlogContentsService->getContentsTemplateRelativePath(['contentUrl' => ['/test3']]);
+        $this->assertEquals($rs, 'BcBlog.../Blog/default/posts');
+
+    }
+
+    /**
+     * test findByName
+     * @return void
+     */
+    public function testFindByName()
+    {
+        $this->loadFixtureScenario(BlogContentScenario::class, 1, 1, null, 'test', '/test');
+        $blogContent = $this->BlogContentsService->findByName('test');
+        $this->assertEquals($blogContent->id, 1);
+        $this->assertEquals($blogContent->content->url, '/test');
+        $this->assertNull($this->BlogContentsService->findByName('non'));
+    }
 }

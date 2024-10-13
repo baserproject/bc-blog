@@ -16,12 +16,11 @@ use BaserCore\Test\Factory\SiteConfigFactory;
 use BaserCore\Test\Scenario\InitAppScenario;
 use BaserCore\TestSuite\BcTestCase;
 use BaserCore\Utility\BcContainerTrait;
-use BaserCore\Utility\BcUtil;
 use BcBlog\Controller\Admin\BlogPostsController;
 use BcBlog\Service\BlogPostsServiceInterface;
 use BcBlog\Test\Factory\BlogPostFactory;
 use BcBlog\Test\Scenario\BlogContentScenario;
-use Cake\Core\Plugin;
+use Cake\Event\Event;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
 use Cake\TestSuite\IntegrationTestTrait;
 
@@ -41,31 +40,12 @@ class BlogPostsControllerTest extends BcTestCase
     use IntegrationTestTrait;
 
     /**
-     * Fixtures
-     *
-     * @var array
-     */
-    public $fixtures = [
-        'plugin.BaserCore.Factory/Sites',
-        'plugin.BaserCore.Factory/SiteConfigs',
-        'plugin.BaserCore.Factory/Users',
-        'plugin.BaserCore.Factory/UsersUserGroups',
-        'plugin.BaserCore.Factory/UserGroups',
-        'plugin.BcBlog.Factory/BlogPosts',
-        'plugin.BcBlog.Factory/BlogContents',
-        'plugin.BaserCore.Factory/Contents',
-        'plugin.BaserCore.Factory/Dblogs',
-        'plugin.BcSearchIndex.Factory/SearchIndexes'
-    ];
-
-    /**
      * set up
      *
      * @return void
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->loadFixtureScenario(InitAppScenario::class);
         $this->BlogPostsController = new BlogPostsController($this->loginAdmin($this->getRequest()));
@@ -94,7 +74,36 @@ class BlogPostsControllerTest extends BcTestCase
      */
     public function testBeforeFilter()
     {
-        $this->markTestIncomplete('このテストは、まだ実装されていません。');
+        $this->loadFixtureScenario(BlogContentScenario::class, 1, 1, null, 'test', '/');
+        SiteConfigFactory::make(['name' => 'editor', 'value' => 'BaserCore.BcCkeditor'])->persist();
+
+        $request = $this->getRequest('/baser/admin/bc-blog/blog_posts/index/1');
+        $request = $this->loginAdmin($request);
+        $blogPosts = new BlogPostsController($request);
+
+        $event = new Event('filter');
+        $blogPosts->beforeFilter($event);
+
+        //$blogContentIdを指定しない場合。
+        $this->expectExceptionMessage('不正なURLです。');
+        $this->expectException('BaserCore\Error\BcException');
+        $event = new Event('Controller.beforeFilter', $this->BlogPostsController);
+        $this->BlogPostsController->beforeFilter($event);
+    }
+    /**
+     * test beforeFilter
+     */
+    public function testBeforeFilter_content_is_null()
+    {
+        //コンテンツデータが存在しない場合。
+        $this->expectExceptionMessage('コンテンツデータが見つかりません。');
+        $this->expectException('BaserCore\Error\BcException');
+        $request = $this->getRequest('/baser/admin/bc-blog/blog_posts/index/1111');
+        $request = $this->loginAdmin($request);
+        $blogPosts = new BlogPostsController($request);
+
+        $event = new Event('filter');
+        $blogPosts->beforeFilter($event);
     }
 
     /**
@@ -148,8 +157,13 @@ class BlogPostsControllerTest extends BcTestCase
         $this->assertFlashMessage('記事「test」を追加しました。');
         $this->assertRedirect(['action' => 'edit/1/1']);
 
+        //失敗テスト
         $this->post('/baser/admin/bc-blog/blog_posts/add/1', ['blog_content_id' => 2, 'title' => '']);
-        $this->assertFlashMessage('入力エラーです。内容を修正してください。');
+        //レスポンスを確認
+        $this->assertResponseCode(200);
+        $errors = $this->_controller->viewBuilder()->getVars()['post']->getErrors();
+        //エラー内容を確認
+        $this->assertEquals(['_empty' => 'タイトルを入力してください。'], $errors['title']);
     }
 
     /**

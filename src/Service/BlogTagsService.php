@@ -18,6 +18,7 @@ use BaserCore\Error\BcException;
 use BcBlog\Model\Entity\BlogTag;
 use BcBlog\Model\Table\BlogTagsTable;
 use Cake\ORM\Query;
+use Cake\ORM\Table;
 use Cake\ORM\TableRegistry;
 
 /**
@@ -27,6 +28,12 @@ use Cake\ORM\TableRegistry;
  */
 class BlogTagsService implements BlogTagsServiceInterface
 {
+
+    /**
+     * BlogTags Table
+     * @var BlogTagsTable|Table
+     */
+    public BlogTagsTable|Table $BlogTags;
 
     /**
      * Construct
@@ -44,6 +51,7 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return \Cake\Datasource\EntityInterface
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getNew()
     {
@@ -56,6 +64,7 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return \Cake\Datasource\EntityInterface
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function get($id)
     {
@@ -69,6 +78,7 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return \Cake\Datasource\EntityInterface
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function create(array $postData)
     {
@@ -84,6 +94,7 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return \Cake\ORM\Query
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getIndex(array $queryParams)
     {
@@ -112,12 +123,13 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return Query
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function createIndexOrder(Query $query, array $params)
     {
         $order = ["BlogTags.{$params['sort']} {$params['direction']}"];
         if (!empty($params['order'])) $order = array_merge($order, $params['order']);
-        return $query->order($order);
+        return $query->orderBy($order);
     }
 
     /**
@@ -128,6 +140,7 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return Query
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function createIndexConditions(Query $query, array $params)
     {
@@ -135,7 +148,9 @@ class BlogTagsService implements BlogTagsServiceInterface
         $conditions = $params['conditions'];
         if (!is_null($params['siteId'])) {
             $assocContent = true;
-            $conditions['Contents.site_id'] = $params['siteId'];
+            $query->matching('BlogPosts.BlogContents.Contents', function ($q) use ($params) {
+                return $q->where(['Contents.site_id' => $params['siteId']]);
+            });
         }
         if ($params['contentId']) {
             $contentId = $params['contentId'];
@@ -149,8 +164,15 @@ class BlogTagsService implements BlogTagsServiceInterface
             });
         }
         if ($params['contentUrl']) {
+            $contentUrl = $params['contentUrl'];
             $assocContent = true;
-            $conditions['Content.url'] = $params['contentUrl'];
+            $query->matching('BlogPosts.BlogContents.Contents', function ($q) use ($contentUrl) {
+                if(is_array($contentUrl)) {
+                    return $q->where(['Contents.url IN' => $contentUrl]);
+                } else {
+                    return $q->where(['Contents.url' => $contentUrl]);
+                }
+            });
         }
         if (!empty($params['name'])) {
             $conditions['BlogTags.name LIKE'] = '%' . urldecode($params['name']) . '%';
@@ -161,8 +183,10 @@ class BlogTagsService implements BlogTagsServiceInterface
             $query->contain($params['contain']);
             if (!empty($params['fields'])) {
                 if (is_array($query['fields'])) {
+                    $query->select($params['fields'][0]);
                     $query->distinct($params['fields'][0]);
                 } else {
+                    $query->select($params['fields']);
                     $query->distinct($params['fields']);
                 }
             } else {
@@ -171,6 +195,7 @@ class BlogTagsService implements BlogTagsServiceInterface
                 // DISTINCT * と指定するとSQLの解析でけされてしまっていたので
                 // フィールドを明示的に指定
                 //============================================================
+                $query->select(['BlogTags.id', 'BlogTags.name']);
                 $query->distinct(['BlogTags.id', 'BlogTags.name']);
             }
         }
@@ -185,6 +210,7 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return \Cake\Datasource\EntityInterface
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function update(BlogTag $blogTag, $postData)
     {
@@ -199,6 +225,7 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return bool
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function delete(int $id)
     {
@@ -213,6 +240,7 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return array
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getTitlesById(array $ids): array
     {
@@ -226,6 +254,7 @@ class BlogTagsService implements BlogTagsServiceInterface
      * @return bool
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function batch(string $method, array $ids): bool
     {

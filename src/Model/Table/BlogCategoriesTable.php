@@ -25,7 +25,7 @@ use BaserCore\Annotation\UnitTest;
 
 /**
  * BlogCategoriesTable
- * @property BlogPostsTable $BlogPosts
+ * @property BlogCategoriesTable $BlogCategoriesTable
  */
 class BlogCategoriesTable extends BlogAppTable
 {
@@ -106,10 +106,10 @@ class BlogCategoriesTable extends BlogAppTable
             ->requirePresence('name', 'create', __d('baser_core', 'カテゴリ名を入力してください。'))
             ->notEmptyString('name', __d('baser_core', 'カテゴリ名を入力してください。'))
             ->add('name', [
-                'alphaNumericDashUnderscore' => [
-                    'rule' => ['alphaNumericDashUnderscore'],
+                'alphaNumericPlus' => [
+                    'rule' => ['alphaNumericPlus'],
                     'provider' => 'bc',
-                    'message' => __d('baser_core', 'カテゴリ名はは半角英数字とハイフン、アンダースコアのみが利用可能です。')]])
+                    'message' => __d('baser_core', 'カテゴリ名は半角英数字とハイフン、アンダースコアのみが利用可能です。')]])
             ->add('name', [
                 'duplicateBlogCategory' => [
                     'rule' => ['duplicateBlogCategory'],
@@ -129,28 +129,19 @@ class BlogCategoriesTable extends BlogAppTable
      * 関連する記事データをカテゴリ無所属に変更し保存する
      *
      * @param boolean $cascade
-     * @return boolean
+     * @return void
+     * @notodo
+     * @checked
+     * @unitTest
      */
     public function beforeDelete(EventInterface $event, EntityInterface $entity, \ArrayObject $options)
     {
-        // TODO ucmitz 未実装
-        return true;
-        $ret = true;
-        if (!empty($this->data['BlogCategory']['id'])) {
-            $id = $this->data['BlogCategory']['id'];
-            $this->BlogPost->unBindModel(['belongsTo' => ['BlogCategory']]);
-            $datas = $this->BlogPost->find('all', ['conditions' => ['BlogPost.blog_category_id' => $id]]);
-            if ($datas) {
-                foreach ($datas as $data) {
-                    $data['BlogPost']['blog_category_id'] = '';
-                    $this->BlogPost->set($data);
-                    if (!$this->BlogPost->save()) {
-                        $ret = false;
-                    }
-                }
-            }
+        $blogPosts = $this->BlogPosts->find()
+            ->where(['BlogPosts.blog_category_id' => $entity->id])->toArray();
+        foreach ($blogPosts as $item) {
+            $item->blog_category_id = '';
+            $this->BlogPosts->save($item);
         }
-        return $ret;
     }
 
     /**
@@ -159,6 +150,9 @@ class BlogCategoriesTable extends BlogAppTable
      * @param int $blogContentId
      * @param array $options
      * @return array
+     * @noTodo
+     * @checked
+     * @unitTest
      *
      */
     public function getCategoryList($blogContentId = null, $options = [])
@@ -193,7 +187,7 @@ class BlogCategoriesTable extends BlogAppTable
                 'type' => 'year'
             ]);
             foreach ($postedDates as $postedDate) {
-                if(empty($postedDate['category'])) continue;
+                if (empty($postedDate['category'])) continue;
                 if ($options['viewCount']) $postedDate['category']->count = $postedDate['count'];
                 $datas[$postedDate['year']][] = $postedDate['category'];
             }
@@ -212,13 +206,16 @@ class BlogCategoriesTable extends BlogAppTable
      * @param array $fields
      * @param array $options
      * @return ResultSetInterface
+     * @noTodo
+     * @checked
+     * @unitTest
      */
     protected function _getCategoryList(
-        int $blogContentId = null,
-        int $parentId = null,
-        bool $viewCount = false,
-        int $depth = 1,
-        int $current = 1,
+        int   $blogContentId = null,
+        int   $parentId = null,
+        bool  $viewCount = false,
+        int   $depth = 1,
+        int   $current = 1,
         array $fields = [],
         array $options = [])
     {
@@ -240,9 +237,6 @@ class BlogCategoriesTable extends BlogAppTable
             $conditions['BlogCategories.parent_id IS'] = null;
         } elseif ($parentId !== false) {    // 親を指定する場合
             $conditions['BlogCategories.parent_id'] = $parentId;
-        }
-        if ($options['siteId'] !== false && !is_null($options['siteId'])) {
-            $conditions['Contents.site_id'] = $options['siteId'];
         }
         if (!is_null($blogContentId)) {
             $conditions['BlogCategories.blog_content_id'] = $blogContentId;
@@ -270,9 +264,14 @@ class BlogCategoriesTable extends BlogAppTable
             ->contain(['BlogPosts' => ['BlogContents' => ['Contents']]])
             ->where($conditions)
             ->select($fields)
-            ->order($options['order']);
-        if($distinct) {
+            ->orderBy($options['order']);
+        if ($distinct) {
             $query->distinct($distinct);
+        }
+        if ($options['siteId'] !== false && !is_null($options['siteId'])) {
+            $query->matching('BlogPosts.BlogContents.Contents', function ($q) use ($options) {
+                return $q->where(['Contents.site_id' => $options['siteId']]);
+            });
         }
         $entities = $query->all();
 
@@ -281,7 +280,7 @@ class BlogCategoriesTable extends BlogAppTable
             foreach ($entities as $entity) {
                 // 表示件数
                 if ($viewCount) {
-                    $childrenIds = $this->find('list', ['keyField' => 'id', 'valueField' => 'id'])
+                    $childrenIds = $this->find('list', keyField: 'id', valueField: 'id')
                         ->where([
                             ['BlogCategories.lft > ' => $entity->lft],
                             ['BlogCategories.rght < ' => $entity->rght]
@@ -342,10 +341,14 @@ class BlogCategoriesTable extends BlogAppTable
      *
      * @param int $id
      * @return bool
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function hasChild($id)
     {
-        return (bool)$this->childCount($id);
+        $entity = $this->find()->where(['id' => $id])->first();
+        return (bool)$this->childCount($entity);
     }
 
     /**
@@ -354,18 +357,83 @@ class BlogCategoriesTable extends BlogAppTable
      * @param int $blogContentId
      * @param string $name
      * @param array $options
-     * @return array|null
+     * @return EntityInterface
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getByName($blogContentId, $name, $options = [])
     {
         $options = array_merge([
             'conditions' => [
-                'BlogCategory.blog_content_id' => $blogContentId,
-                'BlogCategory.name' => urlencode($name),
+                'BlogCategories.blog_content_id' => $blogContentId,
+                'BlogCategories.name' => urlencode($name),
             ],
             'recursive' => -1
         ], $options);
-        $this->unbindModel(['hasMany' => ['BlogPost']]);
-        return $this->find('first', $options);
+        return $this->find('all', $options)->first();
+
+    }
+    /**
+     * コピーする
+     *
+     * @param $id
+     * @param null $newParentId
+     * @return EntityInterface page Or false
+     * @throws \Throwable
+     * @checked
+     * @noTodo
+     * @unitTest
+     */
+    public function copy($id, $newParentId = null)
+    {
+        $entity = $this->get($id);
+        $oldEntity = clone $entity;
+
+        // EVENT BlogCategories.beforeCopy
+        $event = $this->dispatchLayerEvent('beforeCopy', [
+            'data' => $entity,
+            'id' => $id,
+        ]);
+        if ($event !== false) {
+            $entity = ($event->getResult() === null || $event->getResult() === true) ? $event->getData('data') : $event->getResult();
+        }
+
+        $entity->name .= '_copy';
+        $entity->parent_id = $newParentId;
+        $entity->no = $this->getMax('no', ['BlogCategories.blog_content_id' => $entity->blog_content_id]) + 1;
+        unset($entity->id);
+        unset($entity->created);
+        unset($entity->modified);
+
+        try {
+            $entity = $this->saveOrFail($this->patchEntity($this->newEmptyEntity(), $entity->toArray()));
+
+            // EVENT BlogCategories.afterCopy
+            $this->dispatchLayerEvent('afterCopy', [
+                'id' => $entity->id,
+                'data' => $entity,
+                'oldId' => $id,
+                'oldData' => $oldEntity,
+            ]);
+
+            return $entity;
+        } catch (\Throwable $e) {
+            throw $e;
+        }
+    }
+
+    /**
+     * 親カテゴリを取得する
+     * @param $parent_id
+     * @return EntityInterface
+     *
+     * @checked
+     * @noTodo
+     * @unitTest
+     */
+    public function getParent($parent_id)
+    {
+        return $this->find()->where(['id' => $parent_id])->first();
     }
 }

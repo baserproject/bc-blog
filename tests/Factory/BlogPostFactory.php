@@ -43,13 +43,14 @@ class BlogPostFactory extends CakephpBaseFactory
         $this->setDefaultData(function (Generator $faker) {
             return [
                 'blog_content_id' => $faker->randomNumber(),
-                'no' => $faker->randomNumber(),
-                'title' => $faker->title(),
+                'no' => $faker->unique()->randomNumber(),
+                'title' => $faker->text(10),
                 'content' => $faker->randomHtml(),
                 'detail' => $faker->randomHtml(),
                 'blog_category_id' => $faker->randomNumber(),
                 'user_id' => $faker->randomNumber(),
                 'posted' => $faker->date(),
+                'status' => 1,
                 'content_draft' => $faker->randomHtml(),
                 'detail_draft' => $faker->randomHtml(),
                 'publish_begin' => null,

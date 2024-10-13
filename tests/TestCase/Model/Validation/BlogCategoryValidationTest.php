@@ -24,10 +24,6 @@ use BcBlog\Test\Factory\BlogCategoryFactory;
 class BlogCategoryValidationTest extends BcTestCase
 {
 
-    public $fixtures = [
-        'plugin.BcBlog.Factory/BlogCategories',
-    ];
-
     /**
      * Setup
      *
@@ -35,7 +31,6 @@ class BlogCategoryValidationTest extends BcTestCase
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->BlogCategoryValidation = new BlogCategoryValidation();
     }
@@ -68,7 +63,7 @@ class BlogCategoryValidationTest extends BcTestCase
         $this->assertEquals($expected, $this->BlogCategoryValidation::duplicateBlogCategory($value, $context));
     }
 
-    public function duplicateBlogCategoryDataProvider(): array
+    public static function duplicateBlogCategoryDataProvider(): array
     {
         return [
             [

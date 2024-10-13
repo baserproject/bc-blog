@@ -16,7 +16,6 @@ use BaserCore\Annotation\NoTodo;
 use BaserCore\Annotation\Checked;
 use BaserCore\Annotation\UnitTest;
 use BaserCore\Error\BcException;
-use BaserCore\Event\BcEventDispatcherTrait;
 use BaserCore\Model\Entity\Content;
 use BaserCore\Model\Table\UsersTable;
 use BaserCore\Utility\BcUtil;
@@ -42,12 +41,6 @@ use Cake\Validation\Validator;
  */
 class BlogPostsTable extends BlogAppTable
 {
-
-    /**
-     * Trait
-     */
-    use BcEventDispatcherTrait;
-
     /**
      * 検索テーブルへの保存可否
      *
@@ -120,6 +113,7 @@ class BlogPostsTable extends BlogAppTable
      * @return Validator
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function validationDefault(Validator $validator): Validator
     {
@@ -144,7 +138,7 @@ class BlogPostsTable extends BlogAppTable
             ->notEmptyString('title', __d('baser_core', 'タイトルを入力してください。'));
         $validator
             ->scalar('content')
-            ->add('contents', [
+            ->add('content', [
                 'containsScript' => [
                     'rule' => ['containsScript'],
                     'provider' => 'bc',
@@ -172,15 +166,13 @@ class BlogPostsTable extends BlogAppTable
                 ]
             ]);
         $validator
-            ->dateTime('publish_begin')
-            ->allowEmptyDateTime('publish_begin')
             ->add('publish_begin', [
-                'checkDate' => [
-                    'rule' => ['checkDate'],
-                    'provider' => 'bc',
+                'dateTime' => [
+                    'rule' => ['dateTime'],
                     'message' => __d('baser_core', '公開開始日の形式が不正です。')
                 ]
             ])
+            ->allowEmptyDateTime('publish_begin')
             ->add('publish_begin', [
                 'checkDateRange' => [
                     'rule' => ['checkDateRange', ['publish_begin', 'publish_end']],
@@ -189,25 +181,21 @@ class BlogPostsTable extends BlogAppTable
                 ]
             ]);
         $validator
-            ->dateTime('publish_end')
-            ->allowEmptyDateTime('publish_end')
             ->add('publish_end', [
-                'checkDate' => [
-                    'rule' => ['checkDate'],
-                    'provider' => 'bc',
-                    'message' => __d('baser_core', '公開開始日の形式が不正です。')
+                'dateTime' => [
+                    'rule' => ['dateTime'],
+                    'message' => __d('baser_core', '公開終了日の形式が不正です。')
                 ]
-            ]);
+            ])
+            ->allowEmptyDateTime('publish_end');
         $validator
-            ->dateTime('posted')
-            ->notEmptyString('posted', __d('baser_core', '投稿日を入力してください。'))
             ->add('posted', [
-                'checkDate' => [
-                    'rule' => ['checkDate'],
-                    'provider' => 'bc',
+                'dateTime' => [
+                    'rule' => ['dateTime'],
                     'message' => __d('baser_core', '投稿日の形式が不正です。')
                 ]
-            ]);
+            ])
+            ->notEmptyDateTime('posted', __d('baser_core', '投稿日を入力してください。'));;
         $validator
             ->integer('user_id')
             ->notEmptyString('user_id', __d('baser_core', '投稿者を選択してください。'));
@@ -220,7 +208,7 @@ class BlogPostsTable extends BlogAppTable
                     'message' => __d('baser_core', 'ファイルのアップロード制限を超えています。')
                 ]
             ])
-            ->add('eyecatch', [
+            ->add('eye_catch', [
                 'fileExt' => [
                     'rule' => ['fileExt', ['gif', 'jpg', 'jpeg', 'jpe', 'jfif', 'png']],
                     'provider' => 'bc',
@@ -233,20 +221,25 @@ class BlogPostsTable extends BlogAppTable
     /**
      * Before Save
      *
-     * @param  EventInterface $event
-     * @param  EntityInterface $entity
-     * @param  ArrayObject $options
+     * @param EventInterface $event
+     * @param EntityInterface $entity
+     * @param ArrayObject $options
      * @return void
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function beforeSave(EventInterface $event, EntityInterface $entity, ArrayObject $options)
     {
-        if (!Plugin::isLoaded('BcSearchIndex') || !$this->searchIndexSaving ) {
+        if (!Plugin::isLoaded('BcSearchIndex') || !$this->searchIndexSaving) {
             return;
         }
+        $this->unsetExcluded();
         // 検索用テーブルに登録
-        if (empty($entity->blog_content->content) || !empty($entity->blog_content->content->exclude_search)) {
+        if ($entity->exclude_search
+            || empty($entity->blog_content->content)
+            || !empty($entity->blog_content->content->exclude_search)
+        ) {
             $this->setExcluded();
         }
     }
@@ -292,6 +285,9 @@ class BlogPostsTable extends BlogAppTable
      * @param int $blogContentId ブログコンテンツID
      * @param array $options オプション
      * @return array 月別リストデータ
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getPostedDates($blogContentId = null, $options = [])
     {
@@ -310,7 +306,7 @@ class BlogPostsTable extends BlogAppTable
         $posts = $this->find()
             ->contain(['BlogCategories'])
             ->where($conditions)
-            ->order(['BlogPosts.posted DESC'])
+            ->orderBy(['BlogPosts.posted DESC'])
             ->all();
 
         $postedDates = [];
@@ -323,8 +319,8 @@ class BlogPostsTable extends BlogAppTable
             } else {
                 $key = $year . $month;
             }
-            if($options['category'] && $post->blog_category) $key .= '-' . $post->blog_category->id;
-            if(!isset($postedDates[$key])) {
+            if ($options['category'] && $post->blog_category) $key .= '-' . $post->blog_category->id;
+            if (!isset($postedDates[$key])) {
                 $postedDate = [
                     'year' => $year,
                     'month' => ($options['type'] === 'month')? $month : null,
@@ -351,6 +347,7 @@ class BlogPostsTable extends BlogAppTable
      * @return array
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getEntryDates($blogContentId, $year, $month)
     {
@@ -373,6 +370,7 @@ class BlogPostsTable extends BlogAppTable
      * @return array
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getAuthors(int $blogContentId, array $options)
     {
@@ -380,7 +378,7 @@ class BlogPostsTable extends BlogAppTable
             'viewCount' => false
         ], $options);
         $users = $this->Users->find()
-            ->order(['Users.id'])
+            ->orderBy(['Users.id'])
             ->select([
                 'Users.id',
                 'Users.name',
@@ -411,6 +409,7 @@ class BlogPostsTable extends BlogAppTable
      * @return    boolean
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function existsEntry(int $blogContentId, int $year, int $month): bool
     {
@@ -433,6 +432,9 @@ class BlogPostsTable extends BlogAppTable
      * @param int $year
      * @param int $month
      * @return array
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     protected function _getEntryDatesConditions($blogContentId, $year, $month)
     {
@@ -488,31 +490,34 @@ class BlogPostsTable extends BlogAppTable
      * @return boolean 公開状態
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function allowPublish($post)
     {
-        $allowPublish = (int)$post->status;
-        if ($post->publish_begin === '0000-00-00 00:00:00') {
-            $post->publish_begin = null;
-        }
-        if ($post->publish_end === '0000-00-00 00:00:00') {
-            $post->publish_end = null;
+        if (!$post->status) {
+            return false;
         }
 
         // 期限を設定している場合に条件に該当しない場合は強制的に非公開とする
-        if (($post->publish_begin && $post->publish_begin >= date('Y-m-d H:i:s')) ||
-            ($post->publish_end && $post->publish_end <= date('Y-m-d H:i:s'))
+        $currentTime = time();
+        if (($post->publish_begin && $post->publish_begin->getTimestamp() > $currentTime) ||
+            ($post->publish_end && $post->publish_end->getTimestamp() < $currentTime)
         ) {
-            $allowPublish = false;
+            return false;
         }
-        return $allowPublish;
+
+        return true;
     }
 
     /**
      * 公開状態の記事を取得する
      *
      * @param array $options
-     * @return array
+     * @return Query\SelectQuery
+     *
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getPublishes($options)
     {
@@ -522,8 +527,7 @@ class BlogPostsTable extends BlogAppTable
             $options['conditions'] = $this->getConditionAllowPublish();
         }
         // 毎秒抽出条件が違うのでキャッシュしない
-        $datas = $this->find('all', $options);
-        return $datas;
+        return $this->find('all', ...$options);
     }
 
     /**
@@ -547,7 +551,7 @@ class BlogPostsTable extends BlogAppTable
      * @param array $options
      * @checked
      */
-    public function afterSave($created, $options = [])
+    public function afterSave(EventInterface $event, EntityInterface $entity, ArrayObject $options)
     {
         // 検索用テーブルへの登録・削除
         // ucmitz 未実装
@@ -571,6 +575,8 @@ class BlogPostsTable extends BlogAppTable
      *
      * @param array $data
      * @return array|false
+     * @checked
+     * @noTodo
      */
     public function createSearchIndex($post)
     {
@@ -640,6 +646,7 @@ class BlogPostsTable extends BlogAppTable
      * @return mixed page Or false
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function copy($id = null, $data = [])
     {
@@ -656,11 +663,11 @@ class BlogPostsTable extends BlogAppTable
         }
 
         $data->user_id = BcUtil::loginUser()['id'];
-        if($data->name) $data->name .= '_copy';
+        if ($data->name) $data->name .= '_copy';
         $data->title .= '_copy';
         $data->no = $this->getMax('no', ['BlogPosts.blog_content_id' => $data->blog_content_id]) + 1;
         $data->status = false;
-        $data->posted = FrozenTime::now();
+        $data->posted = \Cake\I18n\DateTime::now();
         $data->id = null;
         $data->created = null;
         $data->modified = null;
@@ -734,7 +741,7 @@ class BlogPostsTable extends BlogAppTable
         }
 
         if (!empty($data['BlogTag']['BlogTag'])) {
-            $tags = $this->BlogTag->find('all', [
+            $tags = $this->BlogTag->find('all', ...[
                 'conditions' => ['BlogTag.id' => $data['BlogTag']['BlogTag']],
                 'recursive' => -1
             ]);
@@ -807,11 +814,12 @@ class BlogPostsTable extends BlogAppTable
      * @return array|\Cake\Datasource\EntityInterface|null
      * @checked
      * @noTodo
+     * @unitTest
      */
-    public function getPublishByNo(int $blogContentId, int $no, bool $preview = false)
+    public function getPublishByNo(int $blogContentId, mixed $no, bool $preview = false)
     {
         $conditions = ['BlogPosts.blog_content_id' => $blogContentId];
-        if(!$preview) {
+        if (!$preview) {
             $conditions = array_merge($conditions, $this->getConditionAllowPublish());
         }
         if (is_numeric($no)) {
@@ -825,7 +833,7 @@ class BlogPostsTable extends BlogAppTable
                 ['BlogPosts.name' => rawurldecode($no)]
             );
         }
-        return $this->find()->where($conditions)
+        $entity = $this->find()->where($conditions)
             ->contain([
                 'BlogContents' => ['Contents' => ['Sites']],
                 'BlogCategories',
@@ -834,6 +842,11 @@ class BlogPostsTable extends BlogAppTable
                 'Users'
             ])
             ->first();
+        if($entity) {
+            unset($entity->content_draft);
+            unset($entity->detail_draft);
+        }
+        return $entity;
     }
 
 }

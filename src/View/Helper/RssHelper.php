@@ -1,22 +1,21 @@
 <?php
 /**
- * CakePHP(tm) : Rapid Development Framework (https://cakephp.org)
- * Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
+ * baserCMS :  Based Website Development Project <https://basercms.net>
+ * Copyright (c) NPO baser foundation <https://baserfoundation.org/>
  *
- * Licensed under The MIT License
- * For full copyright and license information, please see the LICENSE.txt
- * Redistributions of files must retain the above copyright notice.
- *
- * @copyright     Copyright (c) Cake Software Foundation, Inc. (https://cakefoundation.org)
- * @link          https://cakephp.org CakePHP(tm) Project
- * @since         1.2.0
- * @license       https://opensource.org/licenses/mit-license.php MIT License
+ * @copyright     Copyright (c) NPO baser foundation
+ * @link          https://basercms.net baserCMS Project
+ * @since         5.0.0
+ * @license       https://basercms.net/license/index.html MIT License
  */
+
 namespace BcBlog\View\Helper;
 
 use Cake\Utility\Xml;
 use Cake\View\Helper;
-use Cake\View\View;
+use BaserCore\Annotation\NoTodo;
+use BaserCore\Annotation\Checked;
+use BaserCore\Annotation\UnitTest;
 
 /**
  * RSS Helper class for easy output RSS structures.
@@ -35,7 +34,7 @@ class RssHelper extends Helper
      *
      * @var array
      */
-    public $helpers = ['Url', 'Time'];
+    public array $helpers = ['Url', 'Time'];
 
     /**
      * Base URL
@@ -94,15 +93,6 @@ class RssHelper extends Helper
     public $version = '2.0';
 
     /**
-     * @inheritDoc
-     */
-    public function __construct(View $View, array $config = [])
-    {
-        deprecationWarning('RssHelper is deprecated and will be removed in 4.0.0');
-        parent::__construct($View, $config);
-    }
-
-    /**
      * Returns an RSS document wrapped in `<rss />` tags
      *
      * @param array $attrib `<rss />` tag attributes
@@ -129,6 +119,9 @@ class RssHelper extends Helper
      * @param array $elements Named array elements which are converted to tags
      * @param string|null $content Content (`<item />`'s belonging to this channel
      * @return string An RSS `<channel />`
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function channel($attrib = [], $elements = [], $content = null)
     {
@@ -175,6 +168,9 @@ class RssHelper extends Helper
      * @param string|array|null $callback A string function name, or array containing an object
      *     and a string method name
      * @return string A set of RSS `<item />` elements
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function items($items, $callback = null)
     {
@@ -198,6 +194,9 @@ class RssHelper extends Helper
      * @param array $att The attributes of the `<item />` element
      * @param array $elements The list of elements contained in this `<item />`
      * @return string An RSS `<item />` element
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function item($att = [], $elements = [])
     {
@@ -291,6 +290,9 @@ class RssHelper extends Helper
      * @param int|string|\DateTime $time UNIX timestamp or valid time string or DateTime object.
      * @return string An RSS-formatted timestamp
      * @see \Cake\View\Helper\TimeHelper::toRSS
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function time($time)
     {
@@ -305,6 +307,9 @@ class RssHelper extends Helper
      * @param string|array|null $content XML element content
      * @param bool $endTag Whether the end tag of the element should be printed
      * @return string XML
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function elem($name, $attrib = [], $content = null, $endTag = true)
     {

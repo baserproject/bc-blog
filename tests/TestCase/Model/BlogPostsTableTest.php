@@ -11,14 +11,21 @@
 
 namespace BcBlog\Test\TestCase\Model;
 
+use BaserCore\Service\PluginsServiceInterface;
+use BaserCore\Test\Factory\ContentFactory;
+use BaserCore\Test\Factory\UserFactory;
 use BaserCore\Test\Scenario\InitAppScenario;
 use BaserCore\TestSuite\BcTestCase;
+use BaserCore\Utility\BcFolder;
 use BcBlog\Model\Table\BlogPostsTable;
+use BcBlog\Service\BlogPostsServiceInterface;
+use BcBlog\Test\Factory\BlogCategoryFactory;
 use BcBlog\Test\Factory\BlogContentFactory;
 use BcBlog\Test\Factory\BlogPostFactory;
-use Cake\Filesystem\Folder;
+use BcBlog\Test\Scenario\MultiSiteBlogPostScenario;
+use Cake\Event\Event;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
-
+use ArrayObject;
 /**
  * Class BlogPostsTableTest
  *
@@ -32,15 +39,6 @@ class BlogPostsTableTest extends BcTestCase
      */
     use ScenarioAwareTrait;
 
-    public $fixtures = [
-        'plugin.BcBlog.Factory/BlogPosts',
-        'plugin.BcBlog.Factory/BlogContents',
-        'plugin.BaserCore.Factory/Users',
-        'plugin.BaserCore.Factory/UsersUserGroups',
-        'plugin.BaserCore.Factory/UserGroups',
-    ];
-
-
     /**
      * Set Up
      *
@@ -48,7 +46,6 @@ class BlogPostsTableTest extends BcTestCase
      */
     public function setUp(): void
     {
-        $this->setFixtureTruncate();
         parent::setUp();
         $this->BlogPostsTable = $this->getTableLocator()->get('BcBlog.BlogPosts');
     }
@@ -80,149 +77,95 @@ class BlogPostsTableTest extends BcTestCase
         $this->assertTrue($this->BlogPostsTable->hasAssociation('Users'));
     }
 
+    /**
+     * test validationDefault
+     */
+    public function test_validationDefault()
+    {
+        $validator = $this->BlogPostsTable->getValidator('default');
+        //入力フィールドのデータが超えた場合、
+        $errors = $validator->validate([
+            'name' => str_repeat('a', 256),
+            'title' => str_repeat('a', 256),
+            'detail' => str_repeat('a', 16777219),
+            'detail_draft' => str_repeat('a', 16777219),
+        ]);
+        //戻り値を確認
+        $this->assertEquals('スラッグは255文字以内で入力してください。', current($errors['name']));
+        $this->assertEquals('タイトルは255文字以内で入力してください。', current($errors['title']));
+        $this->assertEquals('本稿欄に保存できるデータ量を超えています。', current($errors['detail']));
+        $this->assertEquals('草稿欄に保存できるデータ量を超えています。', current($errors['detail_draft']));
+    }
+
     /*
-	 * validate
+	 * 必須チェック
 	 */
-    public function test必須チェック()
+    public function test_validationDefault_testIsNull()
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $this->BlogPost->create([
-            'BlogPost' => ['blog_content_id' => 1]
+        $validator = $this->BlogPostsTable->getValidator('default');
+        $errors = $validator->validate([
+            'title' => null,
+            'user_id' => null,
+            'posted' => null,
         ]);
 
-        $this->assertFalse($this->BlogPost->validates());
-
-        $this->assertArrayHasKey('name', $this->BlogPost->validationErrors);
-        $this->assertEquals('タイトルを入力してください。', current($this->BlogPost->validationErrors['name']));
-
-        $this->assertArrayHasKey('posts_date', $this->BlogPost->validationErrors);
-        $this->assertEquals('投稿日を入力してください。', current($this->BlogPost->validationErrors['posts_date']));
+        //戻り値を確認
+        $this->assertEquals('タイトルを入力してください。', current($errors['title']));
+        $this->assertEquals('投稿日を入力してください。', current($errors['posted']));
+        $this->assertEquals('投稿者を選択してください。', current($errors['user_id']));
     }
 
-    public function test空チェック()
+    /*
+     * 重複をチェック
+     */
+    public function test_validationDefault_testDuplicate()
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $this->BlogPost->create([
-            'BlogPost' => [
-                'user_id' => '',
-                'blog_content_id' => 1
-            ]
+        $validator = $this->BlogPostsTable->getValidator('default');
+        BlogPostFactory::make(['name' => 'test'])->persist();
+        $errors = $validator->validate([
+            'name' => 'test'
         ]);
 
-        $this->assertFalse($this->BlogPost->validates());
-
-        $this->assertArrayHasKey('user_id', $this->BlogPost->validationErrors);
-        $this->assertEquals('投稿者を選択してください。', current($this->BlogPost->validationErrors['user_id']));
+        //戻り値を確認
+        $this->assertEquals('既に登録のあるスラッグです。', current($errors['name']));
     }
 
-    public function test桁数チェック異常系()
+    /*
+     * 許可されない値を指定した場合、
+     */
+    public function test_validationDefault_testNotAllow()
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $this->BlogPost->create([
-            'BlogPost' => [
-                'name' => '1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456',
-                'blog_content_id' => 1
-            ]
+        $validator = $this->BlogPostsTable->getValidator('default');
+        BlogPostFactory::make(['name' => 'test'])->persist();
+        $errors = $validator->validate([
+            'name' => '1',                              //スラッグ
+            'content' => '<?php echo $test; ?>',       //概要欄
+            'detail' => '<?php echo $test; ?>',         //本稿欄
+            'detail_draft' => '<?php echo $test; ?>',   //草稿欄
+            'publish_begin' => '2022-02-29',            //公開開始日
+            'publish_end' => '2022-02-29',              //公開終了日
+            'posted' => '2022-02-29',                   //投稿日
+            'eye_catch' => 'a.aa',                   //アイキャッチ画像
         ]);
 
-        $this->assertFalse($this->BlogPost->validates());
-
-        $this->assertArrayHasKey('name', $this->BlogPost->validationErrors);
-        $this->assertEquals('タイトルは255文字以内で入力してください。', current($this->BlogPost->validationErrors['name']));
-    }
-
-    public function test桁数チェック正常系()
-    {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $this->BlogPost->create([
-            'BlogPost' => [
-                'name' => '123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345',
-                'posts_date' => '2020-01-27 12:57:59',
-                'blog_content_id' => 1
-            ]
-        ]);
-        $this->assertTrue($this->BlogPost->validates());
-    }
-
-    public function testその他異常系()
-    {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        // 形式チェック
-        $this->BlogPost->create([
-            'BlogPost' => [
-                'publish_begin' => 'test',
-                'publish_end' => 'test',
-                'posts_date' => 'test',
-                'blog_content_id' => 1
-            ]
-        ]);
-
-        $this->assertFalse($this->BlogPost->validates());
-
-        $this->assertArrayHasKey('publish_begin', $this->BlogPost->validationErrors);
-        $this->assertEquals('公開開始日の形式が不正です。', current($this->BlogPost->validationErrors['publish_begin']));
-
-        $this->assertArrayHasKey('publish_end', $this->BlogPost->validationErrors);
-        $this->assertEquals('公開終了日の形式が不正です。', current($this->BlogPost->validationErrors['publish_end']));
-
-        $this->assertArrayHasKey('posts_date', $this->BlogPost->validationErrors);
-        $this->assertEquals('投稿日の形式が不正です。', current($this->BlogPost->validationErrors['posts_date']));
-
-        // データ量チェック
-        $bigData = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほ==100Byte.';
-
-        // 64000Byte以上のデータを生成
-        for ($i = 0; $i < 2; $i++) {
-            $bigData .= $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData . $bigData;
-        }
-
-        $this->BlogPost->create([
-            'BlogPost' => [
-                'detail' => $bigData,
-                'detail_draft' => $bigData,
-                'blog_content_id' => 1
-            ]
-        ]);
-
-        $this->assertFalse($this->BlogPost->validates());
-
-        $this->assertArrayHasKey('detail', $this->BlogPost->validationErrors);
-        $this->assertEquals('本稿欄に保存できるデータ量を超えています。', current($this->BlogPost->validationErrors['detail']));
-
-        $this->assertArrayHasKey('detail_draft', $this->BlogPost->validationErrors);
-        $this->assertEquals('草稿欄に保存できるデータ量を超えています。', current($this->BlogPost->validationErrors['detail_draft']));
-    }
-
-    public function testその他正常系()
-    {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        // 形式チェック
-        $this->BlogPost->create([
-            'BlogPost' => [
-                'publish_begin' => '2020-01-27 12:57:59',
-                'publish_end' => '2020-01-29 12:57:59',
-                'posts_date' => '2020-01-27 12:57:59',
-                'blog_content_id' => 1
-            ]
-        ]);
-
-        $this->BlogPost->validates();
-        $this->assertArrayNotHasKey('publish_begin', $this->BlogPost->validationErrors);
-        $this->assertArrayNotHasKey('publish_end', $this->BlogPost->validationErrors);
-        $this->assertArrayNotHasKey('posts_date', $this->BlogPost->validationErrors);
-
-        // データ量チェック
-        $this->BlogPost->create([
-            'BlogPost' => [
-                'detail' => 'test',
-                'detail_draft' => 'test',
-                'blog_content_id' => 1
-            ]
-        ]);
-
-        $this->BlogPost->validates();
-        $this->assertArrayNotHasKey('detail', $this->BlogPost->validationErrors);
-        $this->assertArrayNotHasKey('detail_draft', $this->BlogPost->validationErrors);
+        //戻り値を確認
+        //スラッグ
+        $this->assertEquals('数値だけのスラッグを登録することはできません。', current($errors['name']));
+        //概要欄
+        $this->assertEquals('概要欄でスクリプトの入力は許可されていません。', current($errors['content']));
+        //本稿欄
+        $this->assertEquals('本稿欄でスクリプトの入力は許可されていません。', current($errors['detail']));
+        //草稿欄
+        $this->assertEquals('草稿欄でスクリプトの入力は許可されていません。', current($errors['detail_draft']));
+        //公開開始日
+        $this->assertEquals('公開開始日の形式が不正です。', $errors['publish_begin']['dateTime']);
+        $this->assertEquals('公開期間が不正です。', $errors['publish_begin']['checkDateRange']);
+        //公開終了日
+        $this->assertEquals('公開終了日の形式が不正です。', $errors['publish_end']['dateTime']);
+        //投稿日
+        $this->assertEquals('投稿日の形式が不正です。', $errors['posted']['dateTime']);
+        //アイキャッチ画像
+        $this->assertEquals('許可されていないファイルです。', $errors['eye_catch']['fileExt']);
     }
 
     /**
@@ -282,26 +225,27 @@ class BlogPostsTableTest extends BcTestCase
      */
     public function testGetPostedDates($blogContentId, $options, $expected)
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $result = $this->BlogPost->getPostedDates($blogContentId, $options);
-        $this->assertEquals($expected, $result, '正しくブログの月別一覧を取得できません');
+        //データを生成
+        $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
+        BlogCategoryFactory::make(['id' => 6])->persist();
+
+        //対象メソッドをコール
+        $result = $this->BlogPostsTable->getPostedDates($blogContentId, $options);
+
+        //戻り値を確認
+        if (isset($options['category']) && $options['category']) {
+            $expected['201501-6']['category'] = BlogCategoryFactory::get(6);
+        }
+        $this->assertEquals($expected, $result);
     }
 
-    public function getPostedDatesDataProvider()
+    public static function getPostedDatesDataProvider()
     {
         return [
-            [1, [], [['year' => '2016', 'month' => '02'], ['year' => '2015', 'month' => '01']]],
-            [2, [], [['year' => '2016', 'month' => '02']]],
-            [1, ['category' => true], [
-                ['year' => '2016', 'month' => '02', 'BlogCategory' => ['id' => null, 'name' => null, 'title' => null]],
-                ['year' => '2016', 'month' => '02', 'BlogCategory' => ['id' => '2', 'name' => 'child', 'title' => '子カテゴリ']],
-                ['year' => '2015', 'month' => '01', 'BlogCategory' => ['id' => '2', 'name' => 'child', 'title' => '子カテゴリ']],
-                ['year' => '2015', 'month' => '01', 'BlogCategory' => ['id' => '1', 'name' => 'release', 'title' => 'プレスリリース']],
-            ]],
-            [1, ['viewCount' => true, 'type' => 'year'], [
-                ['year' => '2016', 'count' => 2],
-                ['year' => '2015', 'count' => 2]
-            ]],
+            [6, [], ['201501' => ['year' => '2015', 'month' => '01', 'count' => null]]],
+            [7, [], ['201602' => ['year' => '2016', 'month' => '02', 'count' => null]]],
+            [6, ['category' => true], ['201501-6' => ['year' => '2015', 'month' => '01', 'count' => null]]],
+            [6, ['viewCount' => true, 'type' => 'year'], ['2015' => ['year' => '2015', 'month' => null, 'count' => 1]]],
         ];
     }
 
@@ -316,22 +260,18 @@ class BlogPostsTableTest extends BcTestCase
      */
     public function testGetEntryDates($blogContentId, $year, $month, $expected)
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $datasource = $datasource = $this->BlogPost->getDataSource()->config['datasource'];
-        if ($datasource === 'Database/BcSqlite') {
-            $this->markTestIncomplete('このテストは、まだ実装されていません。');
-        }
-
-        $result = $this->BlogPost->getEntryDates($blogContentId, $year, $month);
-        $this->assertEquals($expected, $result, '正しく日付リストを取得できません');
+        // データ生成
+        $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
+        $result = $this->BlogPostsTable->getEntryDates($blogContentId, $year, $month);
+        $this->assertEquals($expected, $result);
     }
 
-    public function getEntryDatesDataProvider()
+    public static function getEntryDatesDataProvider()
     {
         return [
-            [1, 2015, 1, ['2015-01-27', '2015-01-27']],
-            [1, 2016, 1, []],
-            [2, 2016, 2, ['2016-02-10', '2016-02-10']],
+            [6, 2015, 1, ['2015-01-27']],
+            [6, 2016, 1, []],
+            [7, 2016, 2, ['2016-02-10']],
         ];
     }
 
@@ -340,17 +280,24 @@ class BlogPostsTableTest extends BcTestCase
      */
     public function testGetAuthors()
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $message = '投稿者一覧を正しく取得できません';
-        $result = $this->BlogPost->getAuthors(1, []);
-        $this->assertEquals($result[0]['User']['name'], 'basertest', $message);
-        $this->assertEquals($result[1]['User']['name'], 'basertest2', $message);
+        //データを生成
+        $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
+        UserFactory::make([
+            'id' => BlogPostFactory::get(1)->user_id,
+            'name' => 'name_test',
+            'real_name_1' => 'real_name_1_test',
+            'real_name_2' => 'real_name_2_test',
+            'nickname' => 'nickname_test',
+        ])->persist();
 
-        $result = $this->BlogPost->getAuthors(2, []);
-        $this->assertEquals($result[0]['User']['name'], 'basertest', $message);
+        $result = $this->BlogPostsTable->getAuthors(6, []);
+        $this->assertEquals($result[0]->name, 'name_test');
+        $this->assertEquals($result[0]->real_name_1, 'real_name_1_test');
+        $this->assertEquals($result[0]->real_name_2, 'real_name_2_test');
+        $this->assertEquals($result[0]->nickname, 'nickname_test');
 
-        $result = $this->BlogPost->getAuthors(2, ['viewCount' => true]);
-        $this->assertEquals($result[0]['count'], 2, $message);
+        $result = $this->BlogPostsTable->getAuthors(6, ['viewCount' => true]);
+        $this->assertEquals($result[0]->count, 1);
     }
 
     /**
@@ -358,22 +305,47 @@ class BlogPostsTableTest extends BcTestCase
      */
     public function testExistsEntry()
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $datasource = $datasource = $this->BlogPost->getDataSource()->config['datasource'];
-        if ($datasource === 'Database/BcSqlite') {
-            $this->markTestIncomplete('このテストは、まだ実装されていません。');
-        }
-        $result = $this->BlogPost->existsEntry(1, 2015, 1);
+        // データ生成
+        $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
+
+        $result = $this->BlogPostsTable->existsEntry(6, 2015, 1);
         $this->assertTrue($result);
 
-        $result = $this->BlogPost->existsEntry(1, 2016, 1);
+        $result = $this->BlogPostsTable->existsEntry(6, 2016, 1);
         $this->assertFalse($result);
 
-        $result = $this->BlogPost->existsEntry(2, 2015, 1);
+        $result = $this->BlogPostsTable->existsEntry(7, 2015, 1);
         $this->assertFalse($result);
 
-        $result = $this->BlogPost->existsEntry(2, 2016, 2);
+        $result = $this->BlogPostsTable->existsEntry(7, 2016, 2);
         $this->assertTrue($result);
+    }
+
+    /**
+     * test _getEntryDatesConditions
+     * @param $blogContentId
+     * @param $year
+     * @param $month
+     * @param $expectYear
+     * @param $expertMonth
+     * @dataProvider _getEntryDatesConditionsProvider
+     */
+    public function test_getEntryDatesConditions($blogContentId, $year, $month, $expectYear, $expertMonth)
+    {
+        $rs = $this->execPrivateMethod($this->BlogPostsTable, '_getEntryDatesConditions', [$blogContentId, $year, $month]);
+        //戻る値を確認
+        $this->assertEquals($rs["YEAR(`BlogPosts`.`posted`)"], $expectYear);
+        $this->assertEquals($rs["MONTH(`BlogPosts`.`posted`)"], $expertMonth);
+        $this->assertTrue($rs["BlogPosts.status"]);
+        $this->assertEquals($rs["BlogPosts.blog_content_id"], 1);
+    }
+
+    public static function _getEntryDatesConditionsProvider()
+    {
+        return [
+            [1, 2027, 1, 2027, 1],      //日付を設定する場合、
+            [1, null, null, date('Y'), date('m')],   //日付を設定していない場合、
+        ];
     }
 
     /**
@@ -390,7 +362,7 @@ class BlogPostsTableTest extends BcTestCase
         $this->assertEquals($expected, $result, '正しくコントロールソースを取得できません');
     }
 
-    public function getControlSourceDataProvider()
+    public static function getControlSourceDataProvider()
     {
         return [
             [['blogContentId' => 1], [1 => 'プレスリリース', 2 => '　　　└子カテゴリ', 3 => '親子関係なしカテゴリ']],
@@ -403,25 +375,32 @@ class BlogPostsTableTest extends BcTestCase
      *
      * @dataProvider allowPublishDataProvider
      */
-    public function testAllowPublish($publish_begin, $publish_end, $status, $expected)
+    public function testAllowPublish($publishBegin, $publishEnd, $status, $expected)
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $data['publish_begin'] = $publish_begin;
-        $data['publish_end'] = $publish_end;
-        $data['status'] = $status;
-        $this->assertEquals($this->BlogPost->allowPublish($data), $expected);
+        $post = $this->BlogPostsTable->newEntity([
+            'publish_begin' => $publishBegin,
+            'publish_end' => $publishEnd,
+            'status' => $status,
+        ]);
+        $this->assertEquals($this->BlogPostsTable->allowPublish($post), $expected);
     }
 
-    public function allowPublishDataProvider()
+    public static function allowPublishDataProvider()
     {
         return [
             [null, null, false, false],
             [null, null, true, true],
-            [null, date('Y-m-d H:i:s'), true, false],
-            [null, date('Y-m-d H:i:s', strtotime("+1 hour")), true, true],
-            [date('Y-m-d H:i:s'), null, true, true],
-            [date('Y-m-d H:i:s', strtotime("+1 hour")), null, true, false],
-            [date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), true, false]
+
+            [null, new \Cake\I18n\DateTime('+1 hour'), true, true],
+            [new \Cake\I18n\DateTime('-1 hour'), null, true, true],
+            [null, new \Cake\I18n\DateTime('-1 hour'), true, false],
+            [new \Cake\I18n\DateTime('+1 hour'), null, true, false],
+
+            [new \Cake\I18n\DateTime('-1 hour'), new \Cake\I18n\DateTime('+1 hour'), true, true],
+            [new \Cake\I18n\DateTime('-1 hour'), new \Cake\I18n\DateTime('+1 hour'), false, false],
+            [new \Cake\I18n\DateTime('-1 hour'), new \Cake\I18n\DateTime('-1 hour'), true, false],
+            [new \Cake\I18n\DateTime('+1 hour'), new \Cake\I18n\DateTime('-1 hour'), true, false],
+            [new \Cake\I18n\DateTime('+1 hour'), new \Cake\I18n\DateTime('+2 hour'), true, false],
         ];
     }
 
@@ -430,17 +409,16 @@ class BlogPostsTableTest extends BcTestCase
      */
     public function testGetPublishes()
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $message = '正しく公開状態の記事を取得できません';
+        $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
 
-        $result = count($this->BlogPost->getPublishes([]));
-        $this->assertEquals($result, 6, $message);
+        $result = $this->BlogPostsTable->getPublishes([]);
+        $this->assertCount(6, $result);
 
         $options = ['conditions' => [
             'publish_begin' => '9000-01-27 12:00:00'
         ]];
-        $result = $this->BlogPost->getPublishes($options);
-        $this->assertEmpty($result);
+        $result = $this->BlogPostsTable->getPublishes($options);
+        $this->assertCount(0, $result);
     }
 
     /**
@@ -555,7 +533,7 @@ class BlogPostsTableTest extends BcTestCase
         $this->assertEquals($expected, $result['SearchIndex']['status'], 'ブログ記事用の検索用データを正しく生成できません');
     }
 
-    public function createSearchIndexStatusDataProvider()
+    public static function createSearchIndexStatusDataProvider()
     {
         return [
             [true, true, true],
@@ -596,7 +574,7 @@ class BlogPostsTableTest extends BcTestCase
         ], 'ブログ記事用の検索用データを正しく生成できません');
     }
 
-    public function createSearchIndexPublishDataProvider()
+    public static function createSearchIndexPublishDataProvider()
     {
         return [
             [['begin' => '', 'end' => ''], ['begin' => '', 'end' => ''], ['begin' => '', 'end' => '']],
@@ -621,19 +599,27 @@ class BlogPostsTableTest extends BcTestCase
 
     /**
      * コピーする
-     *
-     * @param int $id
-     * @param array $data
      */
     public function testCopy()
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $this->BlogPost->copy(1);
-        $result = $this->BlogPost->find('first', [
-            'conditions' => ['BlogPost.id' => $this->BlogPost->getLastInsertID()]
-        ]);
-        $this->assertEquals($result['BlogPost']['name'], 'ホームページをオープンしました_copy');
-        $this->assertEquals(date('Y/m/d', strtotime($result['BlogPost']['posts_date'])), date('Y/m/d'));
+        //データを生成
+        $this->loadFixtureScenario(InitAppScenario::class);
+        $this->loginAdmin($this->getRequest());
+        BlogPostFactory::make([
+            'id' => 1,
+            'blog_content_id' => 6,
+            'no' => 3,
+            'name' => 'release',
+            'title' => 'プレスリリース',
+            'status' => 1,
+        ])->persist();
+
+        //コピーメソッドを呼ぶ
+        $result = $this->BlogPostsTable->copy(1);
+        //戻る値を確認
+        $this->assertEquals($result->name, 'release_copy');
+        $this->assertEquals($result->title, 'プレスリリース_copy');
+        $this->assertFalse($result->status);
     }
 
     /**
@@ -649,11 +635,12 @@ class BlogPostsTableTest extends BcTestCase
 	 */
 	public function testCopyEyeCatch()
 	{
+        $this->markTestIncomplete('こちらのテストはまだ未確認です');
 		if (is_dir(WWW_ROOT . '/files/blog/999')) {
-			$folder = new Folder();
-			$folder->delete(WWW_ROOT . '/files/blog/999');
+			$folder = new BcFolder(WWW_ROOT . '/files/blog/999');
+			$folder->delete();
 		}
-		copy(__DIR__ . '/../../Fixture/File/test1.png', __DIR__ . '/../../Fixture/File/test1_.png');
+		copy(__DIR__ . '/../../Images/File/test1.png', __DIR__ . '/../../Images/File/test1_.png');
 		$this->loadFixtureScenario(InitAppScenario::class);
 		BlogContentFactory::make()->forCopyEyeCatch()->persist();
 
@@ -675,7 +662,7 @@ class BlogPostsTableTest extends BcTestCase
 			'eye_catch' => [
 				'name' => 'test.png',
 				'type' => 'image/png',
-				'tmp_name' => __DIR__ . '/../../Fixture/File/test1_.png',
+				'tmp_name' => __DIR__ . '/../../Images/File/test1_.png',
 				'error' => 0,
 				'size' => 1,
 			],
@@ -718,8 +705,86 @@ class BlogPostsTableTest extends BcTestCase
 		$this->assertFalse(is_file($fileDir . '/0000000' . $blogPost2no .  '_eye_catch__thumb.png'));
 		$this->assertFalse(is_file($fileDir . '/0000000' . $blogPost2no .  '_eye_catch__mobile_thumb.png'));
 
-		$dir = new Folder(WWW_ROOT . '/files/blog/999');
+		$dir = new BcFolder(WWW_ROOT . '/files/blog/999');
 		$dir->delete();
 	}
 
+    /**
+     * test getPublishByNo
+     */
+    public function test_getPublishByNo()
+    {
+        //データを生成
+        $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
+        BlogCategoryFactory::make(['id' => BlogPostFactory::get(1)->blog_category_id])->persist();
+        UserFactory::make(['id' => BlogPostFactory::get(1)->user_id])->persist();
+        //$no=数値＆$preview=True
+        $rs = $this->BlogPostsTable->getPublishByNo(6, 3, true);
+
+        //戻る値を確認
+        $this->assertEquals($rs->no, 3);
+        $this->assertEquals($rs->blog_content_id, 6);
+        $this->assertEquals($rs->title, 'プレスリリース');
+        $this->assertNotNull($rs->blog_comments);
+        $this->assertNotNull($rs->blog_tags);
+        $this->assertNotNull($rs->blog_category);
+        $this->assertNotNull($rs->user);
+        $this->assertNotNull($rs->blog_content);
+        $this->assertNotNull($rs->blog_content->content);
+        $this->assertNotNull($rs->blog_content->content->site);
+
+        //$no=文字列＆$preview=false
+        $rs = $this->BlogPostsTable->getPublishByNo(7, 'smartphone_release', false);
+        //戻る値を確認
+        $this->assertEquals($rs->no, 4);
+        $this->assertEquals($rs->title, 'スマホサイトリリース');
+
+        //サービスクラス
+        $blogPostsService = $this->getService(BlogPostsServiceInterface::class);
+        //非公開を設定する
+        $blogPostsService->unpublish(1);
+
+        //preview が true の場合に取得できる
+        $rs = $this->BlogPostsTable->getPublishByNo(6, 3, true);
+        $this->assertEquals($rs->title, 'プレスリリース');
+
+        //preview が false の場合に取得できない
+        $rs = $this->BlogPostsTable->getPublishByNo(6, 3);
+        $this->assertNull($rs);
+    }
+
+    /**
+     * beforeSave
+     * @return void
+     */
+    public function test_beforeSave()
+    {
+        //サービスクラス
+        $PluginsService = $this->getService(PluginsServiceInterface::class);
+        $BlogPostsService = $this->getService(BlogPostsServiceInterface::class);
+        $PluginsService->attach('BcSearchIndex');
+
+        //データを生成
+        $this->loadFixtureScenario(MultiSiteBlogPostScenario::class);
+
+        $blogPost = $BlogPostsService->get(1);
+        $blogPost->exclude_search = 1;
+        $this->BlogPostsTable->beforeSave(new Event("beforeSave"), $blogPost, new ArrayObject());
+        $this->assertTrue($this->BlogPostsTable->isExcluded());
+
+        //set isExcluded true
+        BlogContentFactory::make(['id' => 11])->persist();
+        ContentFactory::make([
+            'id' => 11,
+            'plugin' => 'BcBlog',
+            'type' => 'BlogContent',
+            'entity_id' => 11,
+            'exclude_search' => 1,
+        ])->persist();
+        BlogPostFactory::make(['id' => 8, 'blog_content_id' => 11])->persist();
+
+        $blogPost = $BlogPostsService->get(8);
+        $this->BlogPostsTable->beforeSave(new Event("beforeSave"), $blogPost, new ArrayObject());
+        $this->assertTrue($this->BlogPostsTable->isExcluded());
+    }
 }

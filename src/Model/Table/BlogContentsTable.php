@@ -11,7 +11,6 @@
 
 namespace BcBlog\Model\Table;
 
-use BaserCore\Event\BcEventDispatcherTrait;
 use BaserCore\Model\Entity\Content;
 use BaserCore\Model\Table\ContentsTable;
 use BaserCore\Utility\BcUtil;
@@ -33,12 +32,6 @@ use Cake\Validation\Validator;
  */
 class BlogContentsTable extends BlogAppTable
 {
-
-    /**
-     * Trait
-     */
-    use BcEventDispatcherTrait;
-
     /**
      * Validation Default
      *
@@ -56,13 +49,32 @@ class BlogContentsTable extends BlogAppTable
         $validator->integer('id')
             ->allowEmptyString('id', null, 'create');
 
+        $validator
+            ->scalar('description')
+            ->allowEmptyString('description')
+            ->add('description', [
+                'containsScript' => [
+                    'rule' => ['containsScript'],
+                    'provider' => 'bc',
+                    'message' => __d('baser_core', '説明文でスクリプトの入力は許可されていません。')
+                ]
+            ]);
+
         $validator->scalar('list_count')
             ->notEmptyString('list_count', __d('baser_core', '一覧表示件数を入力してください。'))
-            ->range('list_count', [0, 101], __d('baser_core', '一覧表示件数は100までの数値で入力してください。'))
+            ->range('list_count', [0, 100], __d('baser_core', '一覧表示件数は100までの数値で入力してください。'))
             ->add('list_count', 'halfText', [
                 'provider' => 'bc',
                 'rule' => 'halfText',
                 'message' => __d('baser_core', '一覧表示件数は半角で入力してください。')]);
+
+        $validator->scalar('feed_count')
+            ->notEmptyString('feed_count', __d('baser_core', 'RSSフィード出力件数を入力してください。'))
+            ->range('feed_count', [0, 100], __d('baser_core', 'RSSフィード出力件数は100までの数値で入力してください。'))
+            ->add('feed_count', 'halfText', [
+                'provider' => 'bc',
+                'rule' => 'halfText',
+                'message' => __d('baser_core', 'RSSフィード出力件数は半角で入力してください。')]);
 
         $validator->scalar('template')
             ->maxLength('template', 20, __d('baser_core', 'コンテンツテンプレート名は半角で入力してください。'))
@@ -137,7 +149,7 @@ class BlogContentsTable extends BlogAppTable
         if (!Plugin::isLoaded('BcSearchIndex')) {
             return true;
         }
-        if (empty($entity->content) || !empty($entity->content->exclude_search) || !$entity->content->status) {
+        if (empty($entity->content) || !empty($entity->content->exclude_search)) {
             $this->setExcluded();
         }
         return true;
@@ -173,6 +185,9 @@ class BlogContentsTable extends BlogAppTable
      *
      * @param EntityInterface $entity
      * @return void
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function createRelatedSearchIndexes(EntityInterface $entity)
     {
@@ -181,7 +196,7 @@ class BlogContentsTable extends BlogAppTable
             ->where(['BlogPosts.blog_content_id' => $entity->id])
             ->contain(['BlogContents' => ['Contents']])
             ->all();
-        if(!$entities->count()) return;
+        if (!$entities->count()) return;
         foreach($entities as $entity) {
             // 保存するために強制的に dirty に設定
             $entity->setDirty('id');
@@ -199,14 +214,16 @@ class BlogContentsTable extends BlogAppTable
      * @param int $newSiteId 新しいサイトID
      * @return mixed EntityInterface|false
      * @checked
+     * @unitTest
      */
     public function copy(
         int $id,
         int $newParentId,
-        string $newTitle,
+        string|null $newTitle,
         int $newAuthorId,
         int $newSiteId = null
-    ) {
+    )
+    {
         $data = $this->find()->where(['BlogContents.id' => $id])->contain('Contents')->first();
         $oldData = clone $data;
 
@@ -229,12 +246,12 @@ class BlogContentsTable extends BlogAppTable
         $data->content = new Content([
             'name' => $name,
             'parent_id' => $newParentId,
-            'title' => $newTitle,
+            'title' => $newTitle ?? $oldData->content->title . '_copy',
             'author_id' => $newAuthorId,
             'site_id' => $newSiteId,
             'exclude_search' => false,
-			'description' => $data->content->description,
-			'eyecatch' => $data->content->eyecatch
+            'description' => $data->content->description,
+            'eyecatch' => $data->content->eyecatch
         ]);
         $newBlogContent = $this->patchEntity($this->newEmptyEntity(), $data->toArray());
         if (!is_null($newSiteId) && $siteId != $newSiteId) {
@@ -247,16 +264,16 @@ class BlogContentsTable extends BlogAppTable
 
         try {
             $result = $this->save($newBlogContent);
-            if(!$result) {
+            if (!$result) {
                 $this->getConnection()->rollback();
                 return false;
             }
             $newBlogContent = clone $result;
             $blogPosts = $this->BlogPosts->find()
                 ->where(['BlogPosts.blog_content_id' => $id])
-                ->order(['BlogPosts.id'])
+                ->orderBy(['BlogPosts.id'])
                 ->all();
-            if($blogPosts) {
+            if ($blogPosts) {
                 foreach($blogPosts as $blogPost) {
                     $blogPost->blog_category_id = null;
                     $blogPost->blog_content_id = $newBlogContent->id;
