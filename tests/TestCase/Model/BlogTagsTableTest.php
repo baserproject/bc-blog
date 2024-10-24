@@ -127,7 +127,7 @@ class BlogTagsTableTest extends BcTestCase
         $this->assertEquals($expected, $result);
     }
 
-    public function findCustomParamsDataProvider()
+    public static function findCustomParamsDataProvider()
     {
         return [
             ['count', 5, []],
@@ -149,12 +149,14 @@ class BlogTagsTableTest extends BcTestCase
      */
     public function testGetByName($name, $expects)
     {
-        $this->markTestIncomplete('こちらのテストはまだ未確認です');
-        $result = $this->BlogTag->getByName($name);
-        $this->assertEquals($expects, (bool)$result);
+        BlogTagFactory::make(['name' => 'タグ１'])->persist();
+        BlogTagFactory::make(['name' => 'タグ２'])->persist();
+        $rs = $this->BlogTagsTable->getByName($name);
+        //戻り値を確認
+        $this->assertEquals($expects, (bool)$rs);
     }
 
-    public function getByNameDataProvider()
+    public static function getByNameDataProvider()
     {
         return [
             ['タグ１', true],
@@ -201,6 +203,25 @@ class BlogTagsTableTest extends BcTestCase
         //イベントに入るかどうか確認
         $blogTags = $this->getTableLocator()->get('BcBlog.BlogTags');
         $query = $blogTags->find()->where(['name' => 'afterAdd']);
+        $this->assertEquals(1, $query->count());
+    }
+
+    /**
+     * test copy
+     */
+    public function test_copy()
+    {
+        //データを生成
+        BlogTagFactory::make(['id' => 1, 'name' => 'test'])->persist();
+        //対象メソッドを呼ぶ
+        $rs = $this->BlogTagsTable->copy(1);
+
+        //戻る値を確認
+        $this->assertEquals('test_copy', $rs['name']);
+
+        //DBに存在するか確認すること
+        $blogTags = $this->getTableLocator()->get('BcBlog.BlogTags');
+        $query = $blogTags->find()->where(['name' => 'test_copy']);
         $this->assertEquals(1, $query->count());
     }
 

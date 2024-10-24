@@ -19,6 +19,7 @@ use BaserCore\Error\BcException;
 use BaserCore\Model\Entity\Content;
 use BaserCore\Model\Table\UsersTable;
 use BaserCore\Utility\BcUtil;
+use BcBlog\Model\Entity\BlogPost;
 use Cake\Core\Plugin;
 use Cake\Database\Driver\Mysql;
 use Cake\Database\Driver\Postgres;
@@ -134,7 +135,7 @@ class BlogPostsTable extends BlogAppTable
         $validator
             ->scalar('title')
             ->maxLength('title', 255, __d('baser_core', 'タイトルは255文字以内で入力してください。'))
-            ->requirePresence('title', 'update', __d('baser_core', 'タイトルを入力してください。'))
+            ->requirePresence('title', 'create', __d('baser_core', 'タイトルを入力してください。'))
             ->notEmptyString('title', __d('baser_core', 'タイトルを入力してください。'));
         $validator
             ->scalar('content')
@@ -195,9 +196,11 @@ class BlogPostsTable extends BlogAppTable
                     'message' => __d('baser_core', '投稿日の形式が不正です。')
                 ]
             ])
+            ->requirePresence('posted', 'create', __d('baser_core', '投稿日を入力してください。'))
             ->notEmptyDateTime('posted', __d('baser_core', '投稿日を入力してください。'));;
         $validator
             ->integer('user_id')
+            ->requirePresence('user_id', 'create', __d('baser_core', '投稿者を選択してください。'))
             ->notEmptyString('user_id', __d('baser_core', '投稿者を選択してください。'));
         $validator
             ->allowEmptyString('eye_catch')
@@ -227,12 +230,14 @@ class BlogPostsTable extends BlogAppTable
      * @return void
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function beforeSave(EventInterface $event, EntityInterface $entity, ArrayObject $options)
     {
         if (!Plugin::isLoaded('BcSearchIndex') || !$this->searchIndexSaving) {
             return;
         }
+        $this->unsetExcluded();
         // 検索用テーブルに登録
         if ($entity->exclude_search
             || empty($entity->blog_content->content)
@@ -285,6 +290,7 @@ class BlogPostsTable extends BlogAppTable
      * @return array 月別リストデータ
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getPostedDates($blogContentId = null, $options = [])
     {
@@ -303,7 +309,7 @@ class BlogPostsTable extends BlogAppTable
         $posts = $this->find()
             ->contain(['BlogCategories'])
             ->where($conditions)
-            ->order(['BlogPosts.posted DESC'])
+            ->orderBy(['BlogPosts.posted DESC'])
             ->all();
 
         $postedDates = [];
@@ -375,7 +381,7 @@ class BlogPostsTable extends BlogAppTable
             'viewCount' => false
         ], $options);
         $users = $this->Users->find()
-            ->order(['Users.id'])
+            ->orderBy(['Users.id'])
             ->select([
                 'Users.id',
                 'Users.name',
@@ -510,7 +516,11 @@ class BlogPostsTable extends BlogAppTable
      * 公開状態の記事を取得する
      *
      * @param array $options
-     * @return array
+     * @return Query\SelectQuery
+     *
+     * @checked
+     * @noTodo
+     * @unitTest
      */
     public function getPublishes($options)
     {
@@ -520,8 +530,7 @@ class BlogPostsTable extends BlogAppTable
             $options['conditions'] = $this->getConditionAllowPublish();
         }
         // 毎秒抽出条件が違うのでキャッシュしない
-        $datas = $this->find('all', $options);
-        return $datas;
+        return $this->find('all', ...$options);
     }
 
     /**
@@ -545,7 +554,7 @@ class BlogPostsTable extends BlogAppTable
      * @param array $options
      * @checked
      */
-    public function afterSave($created, $options = [])
+    public function afterSave(EventInterface $event, EntityInterface $entity, ArrayObject $options)
     {
         // 検索用テーブルへの登録・削除
         // ucmitz 未実装
@@ -636,13 +645,13 @@ class BlogPostsTable extends BlogAppTable
      * コピーする
      *
      * @param int $id
-     * @param array $data
+     * @param BlogPost $data
      * @return mixed page Or false
      * @checked
      * @noTodo
      * @unitTest
      */
-    public function copy($id = null, $data = [])
+    public function copy($id = null, BlogPost $data = null)
     {
         if ($id) $data = $this->find()->where(['BlogPosts.id' => $id])->contain('BlogTags')->first();
         $oldData = clone $data;
@@ -661,10 +670,12 @@ class BlogPostsTable extends BlogAppTable
         $data->title .= '_copy';
         $data->no = $this->getMax('no', ['BlogPosts.blog_content_id' => $data->blog_content_id]) + 1;
         $data->status = false;
-        $data->posted = FrozenTime::now();
+        $data->posted = \Cake\I18n\DateTime::now();
         $data->id = null;
         $data->created = null;
         $data->modified = null;
+        $data->publish_begin = null;
+        $data->publish_end = null;
         // 一旦退避(afterSaveでリネームされてしまうのを避ける為）
         $eyeCatch = $data->eye_catch;
         $data->eye_catch = null;
@@ -735,7 +746,7 @@ class BlogPostsTable extends BlogAppTable
         }
 
         if (!empty($data['BlogTag']['BlogTag'])) {
-            $tags = $this->BlogTag->find('all', [
+            $tags = $this->BlogTag->find('all', ...[
                 'conditions' => ['BlogTag.id' => $data['BlogTag']['BlogTag']],
                 'recursive' => -1
             ]);

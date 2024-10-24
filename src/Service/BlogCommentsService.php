@@ -124,10 +124,10 @@ class BlogCommentsService implements BlogCommentsServiceInterface
             $conditions = array_merge($conditions, ['BlogComments.status' => true]);
         }
 
-        return $this->BlogComments->get($id, [
-            'contain' => ['BlogPosts' => ['BlogContents' => ['Contents']]],
-            'conditions' => $conditions
-        ]);
+        return $this->BlogComments->get($id,
+            contain: ['BlogPosts' => ['BlogContents' => ['Contents']]],
+            conditions: $conditions
+        );
     }
 
     /**
@@ -136,6 +136,7 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      * @return EntityInterface 初期値データ
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getNew()
     {
@@ -152,6 +153,7 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      * @param array $postData
      * @return EntityInterface
      * @checked
+     * @unitTest 
      */
     public function add(int $blogContentId, int $blogPostId, array $postData)
     {
@@ -196,6 +198,7 @@ class BlogCommentsService implements BlogCommentsServiceInterface
      * @return EntityInterface
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getBlogContent($blogContentId)
     {

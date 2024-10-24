@@ -30,6 +30,7 @@ use BaserCore\Annotation\UnitTest;
  *
  * @property BlogHelper $Blog
  */
+#[\AllowDynamicProperties]
 class BcBlogBaserHelper extends Helper implements BcPluginBaserHelperInterface
 {
 
@@ -37,7 +38,9 @@ class BcBlogBaserHelper extends Helper implements BcPluginBaserHelperInterface
      * ヘルパー
      * @var array
      */
-    public $helpers = ['BcBlog.Blog'];
+    public array $helpers = [
+        'BcBlog.Blog'
+    ];
 
     /**
      * メソッド一覧取得
@@ -45,6 +48,7 @@ class BcBlogBaserHelper extends Helper implements BcPluginBaserHelperInterface
      * @return array[]
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function methods(): array
     {

@@ -61,13 +61,15 @@ class BlogController extends BlogFrontAppController
      * beforeFilter
      * @return void
      * @checked
+     * @unitTest
      */
     public function beforeFilter(EventInterface $event)
     {
         $response = parent::beforeFilter($event);
-        if ($response) return $response;
-        // TODO ブログコメントの送信でエラーとなるため、一時的に無効化している
-        $this->Security->setConfig('validatePost', false);
+        if($response) return $response;
+        // コメント送信用のトークンを出力する為にセキュリティコンポーネントを利用しているが、
+        // 表示用のコントローラーなのでポストデータのチェックは必要ない
+        $this->FormProtection->setConfig('validate', false);
     }
 
     /**
@@ -90,12 +92,12 @@ class BlogController extends BlogFrontAppController
         $blogContentId = (int)$currentContent?->entity_id;
 
         /* @var BlogContent $blogContent */
-        $blogContent = $blogContentsService->get(
-            $blogContentId,
-            ['status' => 'publish']
-        );
+        $blogContent = $blogContentsService->get($blogContentId, [
+            'status' => 'publish',
+            'contentId' => $currentContent?->id
+        ]);
 
-        if ($this->RequestHandler->prefers('rss')) {
+        if ($this->getRequest()->is('rss')) {
             $listCount = $blogContent->feed_count;
         } else {
             $listCount = $blogContent->list_count;
@@ -123,7 +125,7 @@ class BlogController extends BlogFrontAppController
             return $this->redirect(['action' => 'index']);
         }
 
-        if ($this->RequestHandler->prefers('rss')) {
+        if ($this->getRequest()->is('rss')) {
             $this->set($service->getViewVarsForIndexRss(
                 $this->getRequest(),
                 $blogContent,
@@ -148,7 +150,7 @@ class BlogController extends BlogFrontAppController
      *
      * ### URL例
      * - カテゴリ別記事一覧： /news/archives/category/category-name
-     * - 作成者別記事一覧： /news/archives/author/author-name
+     * - 作成者別記事一覧： /news/archives/author/user-id
      * - タグ別記事一覧： /news/archives/tag/tag-name
      * - 年別記事一覧： /news/archives/date/2022
      * - 月別記事一覧： /news/archives/date/2022/12
@@ -197,15 +199,15 @@ class BlogController extends BlogFrontAppController
 
             case 'author':
                 if (count($pass) > 2) $this->notFound();
-                $author = isset($pass[1])? $pass[1] : '';
+                $userId = isset($pass[1]) ? (int) $pass[1] : '';
                 $this->set($service->getViewVarsForArchivesByAuthor(
-                    $this->paginate($blogPostsService->getIndexByAuthor($author, array_merge([
+                    $this->paginate($blogPostsService->getIndexByAuthor($userId, array_merge([
                         'status' => 'publish',
                         'blog_content_id' => $blogContent->id,
                         'direction' => $blogContent->list_direction,
                         'draft' => false
                     ], $this->getRequest()->getQueryParams())), ['limit' => $blogContent->list_count]),
-                    $author,
+                    $userId,
                     $blogContent
                 ));
                 break;

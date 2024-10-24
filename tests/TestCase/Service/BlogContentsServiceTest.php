@@ -217,10 +217,6 @@ class BlogContentsServiceTest extends BcTestCase
             'level' => 1,
 
         ])->persist();
-        SiteConfigFactory::make([
-            'name' => 'contents_sort_last_modified',
-            'value' => ''
-        ])->persist();
         $data = [
             'entity_id' => 2,
             'parent_id' => 2,
@@ -249,7 +245,7 @@ class BlogContentsServiceTest extends BcTestCase
         $this->assertEquals($rs, $expected);
     }
 
-    public function checkRequireSearchIndexReconstructionProvider()
+    public static function checkRequireSearchIndexReconstructionProvider()
     {
         return [
             [['name' => 'name 1'], ['name' => 'name 2'], true], //$before->name !== $after->name; return true
@@ -296,7 +292,7 @@ class BlogContentsServiceTest extends BcTestCase
         $this->assertEquals($result, $expected);
     }
 
-    public function getControlSourceDataProvider()
+    public static function getControlSourceDataProvider()
     {
         return [
             [null, false], //$field = null; return false
@@ -320,7 +316,7 @@ class BlogContentsServiceTest extends BcTestCase
 
         //contentsTemplateは値がない、かつBlogContentsにcontentUrlが存在する場合、
         $rs = $this->BlogContentsService->getContentsTemplateRelativePath(['contentUrl' => ['/test']]);
-        $this->assertEquals($rs, 'BcBlog.../Blog/homePage/posts');
+        $this->assertEquals($rs, 'BcBlog.../Blog/default/posts');
 
         //contentsTemplateは値がない、かつBlogContentsにcontentUrlが存在しない場合、
         $rs = $this->BlogContentsService->getContentsTemplateRelativePath(['contentUrl' => ['/test3']]);
@@ -329,15 +325,21 @@ class BlogContentsServiceTest extends BcTestCase
     }
 
     /**
-     * test findByName
-     * @return void
+     * test findByContentId
      */
-    public function testFindByName()
+    public function test_findByContentId()
     {
-        $this->loadFixtureScenario(BlogContentScenario::class, 1, 1, null, 'test', '/test');
-        $blogContent = $this->BlogContentsService->findByName('test');
-        $this->assertEquals($blogContent->id, 1);
-        $this->assertEquals($blogContent->content->url, '/test');
-        $this->assertNull($this->BlogContentsService->findByName('non'));
+        //generate data
+        BlogContentFactory::make(['id' => 1])->persist();
+        ContentFactory::make(['id' => 1, 'type' => 'BlogContent', 'title' => 'test', 'description' => 'BaserCMS', 'entity_id' => 1, 'site_id' => 1])->persist();
+        SiteFactory::make(['id' => 1, 'theme' => 'BcBlog'])->persist();
+
+        $rs = $this->BlogContentsService->findByContentId(1);
+        $this->assertEquals('test', $rs->content->title);
+        $this->assertEquals('BaserCMS', $rs->content->description);
+
+        //with invalid content id
+        $rs = $this->BlogContentsService->findByContentId(999);
+        $this->assertNull($rs);
     }
 }

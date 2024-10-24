@@ -106,9 +106,10 @@ class BlogPostsService implements BlogPostsServiceInterface
             $conditions = $this->BlogPosts->getConditionAllowPublish();
             $conditions = array_merge($conditions, $this->BlogPosts->BlogContents->Contents->getConditionAllowPublish());
         }
-        $entity = $this->BlogPosts->get($id, [
-            'conditions' => $conditions,
-            'contain' => $options['contain']]);
+        $entity = $this->BlogPosts->get($id,
+            conditions: $conditions,
+            contain: $options['contain']
+        );
         if ($options['draft'] === false) {
             unset($entity->content_draft);
             unset($entity->detail_draft);
@@ -152,10 +153,12 @@ class BlogPostsService implements BlogPostsServiceInterface
         unset($options['num'], $options['sort']);
 
         if ($options['id'] || $options['no']) $options['contain'][] = 'BlogComments';
+        if ($options['contain'] == null)
+            $options['contain'] = [];
         $query = $this->BlogPosts->find()->contain($options['contain']);
 
         if ($options['order']) {
-            $query->order($this->createOrder($options['order'], $options['direction']));
+            $query->orderBy($this->createOrder($options['order'], $options['direction']));
             unset($options['order'], $options['direction']);
         }
         if (!empty($options['limit'])) {
@@ -176,6 +179,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @param string $direction
      * @return string
      * @checked
+     * @unitTest
      */
     public function createOrder($sort, $direction)
     {
@@ -238,7 +242,6 @@ class BlogPostsService implements BlogPostsServiceInterface
             'site_id' => null,
             'category' => null,
             'keyword' => null,
-            'author' => null,
             'tag' => null,
             'year' => null,
             'month' => null,
@@ -296,7 +299,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         // ページカテゴリ（子カテゴリも検索条件に入れる）
         if (!is_null($params['blog_category_id'])) {
             $blogCategoryIds = [$params['blog_category_id']];
-            $children = $this->BlogPosts->BlogCategories->find('children', ['for' => $params['blog_category_id']]);
+            $children = $this->BlogPosts->BlogCategories->find('children', for: $params['blog_category_id']);
             if ($children) {
                 foreach($children as $child) {
                     $blogCategoryIds[] = $child->id;
@@ -337,10 +340,6 @@ class BlogPostsService implements BlogPostsServiceInterface
         // キーワード
         if ($params['keyword']) {
             $conditions = $this->createKeywordCondition($conditions, $params['keyword']);
-        }
-        // 作成者
-        if ($params['author']) {
-            $conditions = $this->createAuthorCondition($conditions, $params['author']);
         }
         return $query->where($conditions);
     }
@@ -416,17 +415,16 @@ class BlogPostsService implements BlogPostsServiceInterface
             $query = $this->BlogPosts->BlogContents->Contents->find()
                 ->select(['Contents.entity_id']);
 
-            // $contentUrl が配列の場合は IN 句を使う
             if (is_array($contentUrl)) {
                 $query->where(['Contents.url IN' => $contentUrl]);
             } else {
                 $query->where(['Contents.url' => $contentUrl]);
             }
-            // find() で取得した entity_id を配列で取得
+
             $entityIds = Hash::extract($query->toArray(), '{n}.entity_id');
-            if (count($entityIds) > 1) { // $contentUrlが配列の場合
+            if (count($entityIds) > 1) {
                 $categoryConditions['BlogCategories.blog_content_id IN'] = $entityIds;
-            } elseif(count($entityIds) === 1) { // $contentUrlが文字列の場合
+            } elseif(count($entityIds) === 1) {
                 $categoryConditions['BlogCategories.blog_content_id'] = $entityIds[0];
             }
         } elseif (!$force) {
@@ -440,7 +438,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         } else {
             // 指定したカテゴリ名にぶら下がる子カテゴリを取得
             foreach($categoryIds as $categoryId) {
-                $catChildren = $this->BlogPosts->BlogCategories->find('children', ['for' => $categoryId])->all()->toArray();
+                $catChildren = $this->BlogPosts->BlogCategories->find('children', for: $categoryId)->all()->toArray();
                 if ($catChildren) {
                     $categoryIds = array_merge($categoryIds, Hash::extract($catChildren, '{n}.id'));
                 }
@@ -448,6 +446,8 @@ class BlogPostsService implements BlogPostsServiceInterface
         }
         if ($categoryIds !== false) {
             $conditions['BlogPosts.blog_category_id IN'] = $categoryIds;
+        } else {
+        	$conditions['BlogPosts.blog_category_id'] = false;
         }
         return $conditions;
     }
@@ -536,23 +536,6 @@ class BlogPostsService implements BlogPostsServiceInterface
     }
 
     /**
-     * 作成者の条件を作成する
-     *
-     * @param array $conditions
-     * @param string $author
-     * @return array
-     * @checked
-     * @noTodo
-     * @unitTest
-     */
-    public function createAuthorCondition($conditions, $author)
-    {
-        $user = $this->BlogPosts->Users->find()->where(['Users.name' => $author])->first();
-        $conditions['BlogPosts.user_id'] = $user->id;
-        return $conditions;
-    }
-
-    /**
      * 初期データ用のエンティティを取得
      *
      * @param int $userId
@@ -564,10 +547,13 @@ class BlogPostsService implements BlogPostsServiceInterface
     public function getNew(int $blogContentId, int $userId)
     {
         return $this->BlogPosts->newEntity([
+            'title' => '',
             'user_id' => $userId,
-            'posted' => FrozenTime::now(),
+            'posted' => \Cake\I18n\DateTime::now(),
             'status' => false,
             'blog_content_id' => $blogContentId
+        ], [
+            'validate' => false,
         ]);
     }
 
@@ -806,16 +792,16 @@ class BlogPostsService implements BlogPostsServiceInterface
     /**
      * 著者別記事一覧を取得
      *
-     * @param string $author
+     * @param int $userId
      * @param array $options
      * @return Query
      * @checked
      * @noTodo
      * @unitTest
      */
-    public function getIndexByAuthor(string $author, array $options = [])
+    public function getIndexByAuthor(int $userId, array $options = [])
     {
-        $options['author'] = $author;
+        $options['user_id'] = $userId;
         return $this->getIndex($options);
     }
 
@@ -978,6 +964,7 @@ class BlogPostsService implements BlogPostsServiceInterface
      * @return string
      * @checked
      * @noTodo
+     * @unitTest
      */
     public function getUrl(Content $content, BlogPost $post, $full)
     {
