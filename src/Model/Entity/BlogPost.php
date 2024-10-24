@@ -31,15 +31,15 @@ use Cake\View\View;
  * @property int $blog_category_id
  * @property int $user_id
  * @property bool $status
- * @property \Cake\I18n\DateTime $posted
+ * @property FrozenTime $posted
  * @property string $content_draft
  * @property string $detail_draft
- * @property \Cake\I18n\DateTime $publish_begin
- * @property \Cake\I18n\DateTime $publish_end
+ * @property FrozenTime $publish_begin
+ * @property FrozenTime $publish_end
  * @property bool $exclude_search
  * @property string $eye_catch
- * @property \Cake\I18n\DateTime $created
- * @property \Cake\I18n\DateTime $modified
+ * @property FrozenTime $created
+ * @property FrozenTime $modified
  * @property BlogContent $blog_content
  */
 class BlogPost extends Entity
@@ -50,7 +50,7 @@ class BlogPost extends Entity
      *
      * @var array
      */
-    protected array $_accessible = [
+    protected $_accessible = [
         '*' => true,
         'id' => false
     ];
@@ -58,7 +58,7 @@ class BlogPost extends Entity
     /**
      * アイキャッチのフルパス
      */
-    protected array $_virtual = ['_eyecatch'];
+    protected $_virtual = ['_eyecatch'];
 
     /**
      * アイキャッチのフルパスを取得

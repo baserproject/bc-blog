@@ -217,6 +217,10 @@ class BlogContentsServiceTest extends BcTestCase
             'level' => 1,
 
         ])->persist();
+        SiteConfigFactory::make([
+            'name' => 'contents_sort_last_modified',
+            'value' => ''
+        ])->persist();
         $data = [
             'entity_id' => 2,
             'parent_id' => 2,
@@ -245,7 +249,7 @@ class BlogContentsServiceTest extends BcTestCase
         $this->assertEquals($rs, $expected);
     }
 
-    public static function checkRequireSearchIndexReconstructionProvider()
+    public function checkRequireSearchIndexReconstructionProvider()
     {
         return [
             [['name' => 'name 1'], ['name' => 'name 2'], true], //$before->name !== $after->name; return true
@@ -292,7 +296,7 @@ class BlogContentsServiceTest extends BcTestCase
         $this->assertEquals($result, $expected);
     }
 
-    public static function getControlSourceDataProvider()
+    public function getControlSourceDataProvider()
     {
         return [
             [null, false], //$field = null; return false
@@ -316,7 +320,7 @@ class BlogContentsServiceTest extends BcTestCase
 
         //contentsTemplateは値がない、かつBlogContentsにcontentUrlが存在する場合、
         $rs = $this->BlogContentsService->getContentsTemplateRelativePath(['contentUrl' => ['/test']]);
-        $this->assertEquals($rs, 'BcBlog.../Blog/default/posts');
+        $this->assertEquals($rs, 'BcBlog.../Blog/homePage/posts');
 
         //contentsTemplateは値がない、かつBlogContentsにcontentUrlが存在しない場合、
         $rs = $this->BlogContentsService->getContentsTemplateRelativePath(['contentUrl' => ['/test3']]);

@@ -21,6 +21,17 @@ class BlogAppViewTest extends BcTestCase
 {
 
     /**
+     * Fixtures
+     *
+     * @var array
+     */
+    public $fixtures = [
+        'plugin.BaserCore.Sites',
+        'plugin.BaserCore.Contents',
+        'plugin.BaserCore.ContentFolders'
+    ];
+
+    /**
      * setUp method
      *
      * @return void
