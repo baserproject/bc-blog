@@ -76,7 +76,11 @@ class BlogContentsService implements BlogContentsServiceInterface
         ]);
 
         if (!empty($queryParams['limit'])) {
-            $query->limit($queryParams['limit']);
+            if (!empty($queryParams['page'])) {
+                $query = $query->page($queryParams['page'], $queryParams['limit']);
+            } else {
+                $query = $query->limit($queryParams['limit']);
+            }
         }
 
         $query = $this->createIndexConditions($query, $queryParams);
