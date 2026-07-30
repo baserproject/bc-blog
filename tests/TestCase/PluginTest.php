@@ -45,15 +45,8 @@ class PluginTest extends BcTestCase
         parent::setUp();
         BcUtil::includePluginClass('BcBlog');
         $plugins = Plugin::getCollection();
-        // CakePHP 5.2 では new Application 時に Plugin::setCollection() でグローバルコレクションが
-        // アプリのものに差し替わり、BcTestCase のセットアップで BcBlog が既に読み込まれているため、
-        // 二重 add による例外を防ぐ。
-        if ($plugins->has('BcBlog')) {
-            $this->Plugin = $plugins->get('BcBlog');
-        } else {
-            $this->Plugin = $plugins->create('BcBlog');
-            $plugins->add($this->Plugin);
-        }
+        $this->Plugin = $plugins->create('BcBlog');
+        $plugins->add($this->Plugin);
     }
 
     /**

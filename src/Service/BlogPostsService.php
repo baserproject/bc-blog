@@ -837,7 +837,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         ], $this->BlogPosts->getConditionAllowPublish());
         $prevPost = $this->BlogPosts->find()
             ->where($conditions)
-            ->orderBy($order)
+            ->order($order)
             ->first();
 
         if (!empty($prevPost)) return $prevPost;
@@ -849,7 +849,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         ], $this->BlogPosts->getConditionAllowPublish());
         return $this->BlogPosts->find()
             ->where($conditions)
-            ->orderBy($order)
+            ->order($order)
             ->first();
     }
 
@@ -874,7 +874,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         ], $this->BlogPosts->getConditionAllowPublish());
         $nextPost = $this->BlogPosts->find()
             ->where($conditions)
-            ->orderBy($order)
+            ->order($order)
             ->first();
 
         if (!empty($nextPost)) return $nextPost;
@@ -886,7 +886,7 @@ class BlogPostsService implements BlogPostsServiceInterface
         ], $this->BlogPosts->getConditionAllowPublish());
         return $this->BlogPosts->find()
             ->where($conditions)
-            ->orderBy($order)
+            ->order($order)
             ->first();
     }
 
@@ -922,7 +922,7 @@ class BlogPostsService implements BlogPostsServiceInterface
             ['BlogPosts.id <>' => $post->id],
             'BlogPosts.blog_content_id' => $post->blog_content_id
         ], $this->BlogPosts->getConditionAllowPublish()))
-            ->orderBy($options['order'])
+            ->order($options['order'])
             ->limit($options['limit']);
     }
 

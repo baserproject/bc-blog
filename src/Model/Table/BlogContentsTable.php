@@ -140,7 +140,7 @@ class BlogContentsTable extends BlogAppTable
      * @param EventInterface $event
      * @param EntityInterface $entity
      * @param \ArrayObject $options
-     * @return void
+     * @return boolean
      * @checked
      * @noTodo
      * @unitTest
@@ -148,11 +148,12 @@ class BlogContentsTable extends BlogAppTable
     public function beforeSave(EventInterface $event, EntityInterface $entity, \ArrayObject $options)
     {
         if (!Plugin::isLoaded('BcSearchIndex')) {
-            return;
+            return true;
         }
         if (empty($entity->content) || !empty($entity->content->exclude_search)) {
             $this->setExcluded();
         }
+        return true;
     }
 
     /**
