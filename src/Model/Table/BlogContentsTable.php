@@ -79,6 +79,8 @@ class BlogContentsTable extends BlogAppTable
         $validator->scalar('template')
             ->maxLength('template', 20, __d('baser_core', 'コンテンツテンプレート名は半角で入力してください。'))
             ->notEmptyString('template', __d('baser_core', 'コンテンツテンプレート名を入力してください。'))
+            // テンプレート名はディレクトリのパスに連結されるため、`..` 等を含まない文字に限定する
+            ->regex('template', '/^[a-zA-Z0-9_\-]+$/', __d('baser_core', 'コンテンツテンプレート名は半角英数字、アンダースコア、ハイフンのみで入力してください。'))
             ->add('template', 'halfText', [
                 'provider' => 'bc',
                 'rule' => 'halfText',
@@ -178,6 +180,33 @@ class BlogContentsTable extends BlogAppTable
             'publish_begin' => $blogContent->content->publish_begin,
             'publish_end' => $blogContent->content->publish_end
         ];
+    }
+
+    /**
+     * 配下のブログ記事の検索インデックスを作り直す
+     *
+     * ブログ記事は Contents で管理されないため、
+     * ContentsService::saveSearchIndex() の children では辿れない。
+     * そのままだとブログを非公開にしても記事の検索インデックスが追従せず、
+     * サイト内検索やサイトマップに出続ける（サイトマップには 404 になる URL が載る）。
+     *
+     * @param EntityInterface $entity BlogContent
+     * @return void
+     * @checked
+     * @noTodo
+     */
+    public function saveChildrenSearchIndex(EntityInterface $entity): void
+    {
+        if (!Plugin::isLoaded('BcSearchIndex')) return;
+        $blogPosts = $this->BlogPosts->find()
+            ->where(['BlogPosts.blog_content_id' => $entity->id])
+            ->all();
+        foreach($blogPosts as $blogPost) {
+            $searchIndex = $this->BlogPosts->createSearchIndex($blogPost);
+            if ($searchIndex) {
+                $this->BlogPosts->saveSearchIndex($searchIndex);
+            }
+        }
     }
 
     /**

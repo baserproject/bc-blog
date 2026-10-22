@@ -97,6 +97,13 @@ class BlogHelper extends Helper
     public $content = null;
 
     /**
+     * isSameSiteBlogContent の判定結果のリクエスト内キャッシュ
+     *
+     * @var array<string, bool>
+     */
+    private array $isSameSiteBlogContentCache = [];
+
+    /**
      * コンストラクタ
      *
      * @param View $View Viewオブジェクト
@@ -483,7 +490,17 @@ class BlogHelper extends Helper
     )
     {
         if ($cut) {
-            $out = str_replace(["\r\n", "\r", "\n"], '', $post->content . $post->detail);
+            // $cut を指定した場合も $moreText と use_content を尊重する。
+            // ここで content と detail を無条件に連結すると、
+            // 「詳細を表示しない」指定の一覧で本文まで抜粋に出てしまう。
+            $source = '';
+            if ($this->currentBlogContent->use_content ?? true) {
+                $source .= $post->content;
+            }
+            if ($moreText) {
+                $source .= $post->detail;
+            }
+            $out = str_replace(["\r\n", "\r", "\n"], '', $source);
             $out = html_entity_decode($out, ENT_QUOTES, 'UTF-8');
             if ($lastText && mb_strlen(strip_tags($out)) > $cut) {
                 $out = mb_substr(strip_tags($out), 0, $cut, 'UTF-8') . strip_tags($lastText);
@@ -705,6 +722,11 @@ class BlogHelper extends Helper
         $categoryPath = $blogCategoriesTable->find('path', for: $blogCategoryId);
         $blogContentId = $blogCategory->blog_content_id;
         $this->setContent($blogContentId);
+        // 記事が見つからないページなど、コンテンツを特定できない場合は
+        // currentContent が null のままになる。URL を組み立てられないので何も返さない。
+        if (!$this->currentContent) {
+            return '';
+        }
         $sitesTable = TableRegistry::getTableLocator()->get('BaserCore.Sites');
         $site = $sitesTable->findByUrl($this->currentContent->url);
         $contentUrl = $this->BcBaser->getContentsUrl($this->currentContent->url, !$this->isSameSiteBlogContent($blogContentId), !empty($site->use_subdomain), false);
@@ -2006,6 +2028,26 @@ class BlogHelper extends Helper
      * @unitTest
      */
     public function isSameSiteBlogContent($blogContentId)
+    {
+        // 記事リンク・カテゴリリンクの生成のたびに呼ばれるため、判定結果をリクエスト内で保持する
+        // 判定は currentContent（エイリアス）にも依存するのでキーに含める
+        $cacheKey = $blogContentId . '|' . ($this->currentContent->alias_id ?? '');
+        if (!array_key_exists($cacheKey, $this->isSameSiteBlogContentCache)) {
+            $this->isSameSiteBlogContentCache[$cacheKey] = $this->checkSameSiteBlogContent($blogContentId);
+        }
+        return $this->isSameSiteBlogContentCache[$cacheKey];
+    }
+
+    /**
+     * 指定したブログコンテンツIDが、現在のサイトと同じかどうか判定する（キャッシュを使わない実体）
+     *
+     * @param int $blogContentId ブログコンテンツID
+     * @return bool
+     * @checked
+     * @noTodo
+     * @unitTest
+     */
+    protected function checkSameSiteBlogContent($blogContentId): bool
     {
         $contentsTable = TableRegistry::getTableLocator()->get('BaserCore.Contents');
         $content = $contentsTable->find()->where([
