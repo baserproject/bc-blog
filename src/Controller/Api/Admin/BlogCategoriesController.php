@@ -11,9 +11,9 @@
 namespace BcBlog\Controller\Api\Admin;
 
 use BaserCore\Controller\Api\Admin\BcAdminApiController;
-use BaserCore\Error\BcException;
 use BcBlog\Service\BlogCategoriesServiceInterface;
 use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Http\Exception\BadRequestException;
 use Cake\ORM\Exception\PersistenceFailedException;
 use BaserCore\Annotation\UnitTest;
 use BaserCore\Annotation\NoTodo;
@@ -39,12 +39,8 @@ class BlogCategoriesController extends BcAdminApiController
         $allowMethod = [
             'delete' => '削除'
         ];
+        if (!$this->validateBatchRequest($allowMethod)) return;
         $method = $this->getRequest()->getData('batch');
-        if (!isset($allowMethod[$method])) {
-            $this->setResponse($this->response->withStatus(500));
-            $this->viewBuilder()->setOption('serialize', []);
-            return;
-        }
         try {
             $targets = $this->getRequest()->getData('batch_targets');
             $service->batch($method, $targets);
@@ -56,8 +52,7 @@ class BlogCategoriesController extends BcAdminApiController
             );
             $message = __d('baser_core', '一括処理が完了しました。');
         } catch (\Throwable $e) {
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
-            $this->setResponse($this->response->withStatus(500));
+            $message = $this->handleThrowable($e);
         }
 
         $this->set(['message' => $message]);
@@ -80,7 +75,7 @@ class BlogCategoriesController extends BcAdminApiController
         $queryParams = $this->getRequest()->getQueryParams();
 
         if (!isset($queryParams['blog_content_id']) || empty($queryParams['blog_content_id'])) {
-            throw new BcException(__d('baser_core', 'パラメーターに blog_content_id が指定されていません。'));
+            throw new BadRequestException(__d('baser_core', 'パラメーターに blog_content_id が指定されていません。'));
         }
 
         $blogCategories = $message = null;
@@ -90,8 +85,7 @@ class BlogCategoriesController extends BcAdminApiController
             $this->setResponse($this->response->withStatus(404));
             $message = __d('baser_core', 'データが見つかりません。');
         } catch (\Throwable $e) {
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
-            $this->setResponse($this->response->withStatus(500));
+            $message = $this->handleThrowable($e);
         }
         $this->set([
             'blogCategories' => $blogCategories,
@@ -121,8 +115,7 @@ class BlogCategoriesController extends BcAdminApiController
             $this->setResponse($this->response->withStatus(404));
             $message = __d('baser_core', 'データが見つかりません。');
         } catch (\Throwable $e) {
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
-            $this->setResponse($this->response->withStatus(500));
+            $message = $this->handleThrowable($e);
         }
         $this->set([
             'blogCategory' => $blogCategory,
@@ -146,7 +139,7 @@ class BlogCategoriesController extends BcAdminApiController
         $queryParams = $this->getRequest()->getQueryParams();
 
         if (!isset($queryParams['blog_content_id']) || empty($queryParams['blog_content_id'])) {
-            throw new BcException(__d('baser_core', 'パラメーターに blog_content_id が指定されていません。'));
+            throw new BadRequestException(__d('baser_core', 'パラメーターに blog_content_id が指定されていません。'));
         }
 
         $blogCategories = $message = null;
@@ -156,8 +149,7 @@ class BlogCategoriesController extends BcAdminApiController
             $this->setResponse($this->response->withStatus(404));
             $message = __d('baser_core', 'データが見つかりません。');
         } catch (\Throwable $e) {
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
-            $this->setResponse($this->response->withStatus(500));
+            $message = $this->handleThrowable($e);
         }
         $this->set([
             'blogCategories' => $blogCategories,
@@ -181,7 +173,7 @@ class BlogCategoriesController extends BcAdminApiController
         $postData = $this->getRequest()->getData();
 
         if (!isset($postData['blog_content_id']) || empty($postData['blog_content_id'])) {
-            throw new BcException(__d('baser_core', 'パラメーターに blog_content_id が指定されていません。'));
+            throw new BadRequestException(__d('baser_core', 'パラメーターに blog_content_id が指定されていません。'));
         }
 
         $blogCategory = $errors = null;
@@ -194,8 +186,7 @@ class BlogCategoriesController extends BcAdminApiController
             $message = __d('baser_core', "入力エラーです。内容を修正してください。");
             $this->setResponse($this->response->withStatus(400));
         } catch (\Throwable $e) {
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
-            $this->setResponse($this->response->withStatus(500));
+            $message = $this->handleThrowable($e);
         }
 
         $this->set([
@@ -232,8 +223,7 @@ class BlogCategoriesController extends BcAdminApiController
             $this->setResponse($this->response->withStatus(404));
             $message = __d('baser_core', 'データが見つかりません。');
         } catch (\Throwable $e) {
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
-            $this->setResponse($this->response->withStatus(500));
+            $message = $this->handleThrowable($e);
         }
         $this->set([
             'message' => $message,
@@ -269,8 +259,7 @@ class BlogCategoriesController extends BcAdminApiController
             $this->setResponse($this->response->withStatus(404));
             $message = __d('baser_core', 'データが見つかりません。');
         } catch (\Throwable $e) {
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
-            $this->setResponse($this->response->withStatus(500));
+            $message = $this->handleThrowable($e);
         }
         $this->set([
             'message' => $message,
@@ -306,8 +295,7 @@ class BlogCategoriesController extends BcAdminApiController
             $this->setResponse($this->response->withStatus(404));
             $message = __d('baser_core', 'データが見つかりません。');
         } catch (\Throwable $e) {
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。' . $e->getMessage());
-            $this->setResponse($this->response->withStatus(500));
+            $message = $this->handleThrowable($e);
         }
 
         $this->set([

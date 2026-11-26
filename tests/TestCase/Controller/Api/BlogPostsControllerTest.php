@@ -121,4 +121,39 @@ class BlogPostsControllerTest extends BcTestCase
         $this->assertResponseCode(403);
     }
 
+    /**
+     * 公開APIのエラー応答に例外の内容（サーバーのパス等の内部情報）を含めない
+     */
+    public function test_view_error_message()
+    {
+        PermissionFactory::make()->allowGuest('/baser/api/*')->persist();
+
+        // 数値でないIDを指定して例外を発生させる
+        $this->get('/baser/api/bc-blog/blog_posts/view/abc.json');
+        $this->assertResponseCode(500);
+        $result = json_decode((string)$this->_response->getBody());
+        $this->assertEquals('データベース処理中にエラーが発生しました。', $result->message);
+    }
+
+    /**
+     * 公開APIでは preview パラメータを拒否する（未認証の非公開データ閲覧対策）
+     */
+    public function test_preview_forbidden_on_public_api()
+    {
+        $this->loadFixtureScenario(BlogContentScenario::class, 1, 1, null, 'test', '/test');
+        BlogPostFactory::make(['id' => '1', 'blog_content_id' => '1', 'title' => 'blog post', 'status' => true])->persist();
+        ContentFactory::make(['type' => 'BlogContent', 'entity_id' => 1])->persist();
+        PermissionFactory::make()->allowGuest('/baser/api/*')->persist();
+
+        // 一覧・単一とも preview を指定すると 403
+        $this->get('/baser/api/bc-blog/blog_posts/index/1.json?preview=1');
+        $this->assertResponseCode(403);
+        $this->get('/baser/api/bc-blog/blog_posts/view/1.json?preview=1');
+        $this->assertResponseCode(403);
+
+        // amp; プレフィックスによる正規化を悪用したバイパスも 403
+        $this->get('/baser/api/bc-blog/blog_posts/index/1.json?amp;preview=1');
+        $this->assertResponseCode(403);
+    }
+
 }

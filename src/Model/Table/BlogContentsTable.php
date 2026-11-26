@@ -152,6 +152,8 @@ class BlogContentsTable extends BlogAppTable
         if (!Plugin::isLoaded('BcSearchIndex')) {
             return;
         }
+        // 前回の保存で検索対象外にした状態が残らないよう、一旦解除する
+        $this->unsetExcluded();
         if (empty($entity->content) || !empty($entity->content->exclude_search)) {
             $this->setExcluded();
         }
@@ -183,6 +185,33 @@ class BlogContentsTable extends BlogAppTable
     }
 
     /**
+     * 配下のブログ記事の検索インデックスを作り直す
+     *
+     * ブログ記事は Contents で管理されないため、
+     * ContentsService::saveSearchIndex() の children では辿れない。
+     * そのままだとブログを非公開にしても記事の検索インデックスが追従せず、
+     * サイト内検索やサイトマップに出続ける（サイトマップには 404 になる URL が載る）。
+     *
+     * @param EntityInterface $entity BlogContent
+     * @return void
+     * @checked
+     * @noTodo
+     */
+    public function saveChildrenSearchIndex(EntityInterface $entity): void
+    {
+        if (!Plugin::isLoaded('BcSearchIndex')) return;
+        $blogPosts = $this->BlogPosts->find()
+            ->where(['BlogPosts.blog_content_id' => $entity->id])
+            ->all();
+        foreach($blogPosts as $blogPost) {
+            $searchIndex = $this->BlogPosts->createSearchIndex($blogPost);
+            if ($searchIndex) {
+                $this->BlogPosts->saveSearchIndex($searchIndex);
+            }
+        }
+    }
+
+    /**
      * 関連するブログ記事の検索インデックスを作成する
      *
      * @param EntityInterface $entity
@@ -199,10 +228,19 @@ class BlogContentsTable extends BlogAppTable
             ->contain(['BlogContents' => ['Contents']])
             ->all();
         if (!$entities->count()) return;
-        foreach($entities as $entity) {
-            // 保存するために強制的に dirty に設定
-            $entity->setDirty('id');
-            $this->BlogPosts->save($entity);
+        foreach($entities as $post) {
+            // 記事を保存すると更新日時が変わるため、検索インデックスだけを作成する
+            if ($post->exclude_search
+                || empty($post->blog_content->content)
+                || !empty($post->blog_content->content->exclude_search)
+            ) {
+                $this->BlogPosts->deleteSearchIndex($post->id);
+                continue;
+            }
+            $searchIndex = $this->BlogPosts->createSearchIndex($post);
+            if ($searchIndex) {
+                $this->BlogPosts->saveSearchIndex($searchIndex);
+            }
         }
     }
 

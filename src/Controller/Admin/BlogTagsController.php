@@ -130,7 +130,7 @@ class BlogTagsController extends BlogAdminAppController
      * @noTodo
      * @unitTest
      */
-    public function edit(BlogTagsServiceInterface $service, $id)
+    public function edit(BlogTagsServiceInterface $service, int $id)
     {
         $blogTag = $service->get($id);
         if ($this->request->is(['patch', 'post', 'put'])) {
@@ -173,7 +173,7 @@ class BlogTagsController extends BlogAdminAppController
      * @noTodo
      * @unitTest
      */
-    public function delete(BlogTagsServiceInterface $service, $id)
+    public function delete(BlogTagsServiceInterface $service, int $id)
     {
         $this->request->allowMethod(['post', 'delete']);
         try {

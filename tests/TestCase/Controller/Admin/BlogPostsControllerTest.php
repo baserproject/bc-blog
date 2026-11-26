@@ -24,6 +24,7 @@ use BcBlog\Service\BlogPostsServiceInterface;
 use BcBlog\Test\Factory\BlogPostFactory;
 use BcBlog\Test\Scenario\BlogContentScenario;
 use Cake\Event\Event;
+use Cake\Http\Exception\NotFoundException;
 use CakephpFixtureFactories\Scenario\ScenarioAwareTrait;
 use Cake\TestSuite\IntegrationTestTrait;
 
@@ -90,7 +91,7 @@ class BlogPostsControllerTest extends BcTestCase
 
         //$blogContentIdを指定しない場合。
         $this->expectExceptionMessage('不正なURLです。');
-        $this->expectException('BaserCore\Error\BcException');
+        $this->expectException('Cake\Http\Exception\NotFoundException');
         $event = new Event('Controller.beforeFilter', $this->BlogPostsController);
         $this->BlogPostsController->beforeFilter($event);
     }
@@ -101,8 +102,23 @@ class BlogPostsControllerTest extends BcTestCase
     {
         //コンテンツデータが存在しない場合。
         $this->expectExceptionMessage('コンテンツデータが見つかりません。');
-        $this->expectException('BaserCore\Error\BcException');
+        $this->expectException('Cake\Http\Exception\NotFoundException');
         $request = $this->getRequest('/baser/admin/bc-blog/blog_posts/index/1111');
+        $request = $this->loginAdmin($request);
+        $blogPosts = new BlogPostsController($request);
+
+        $event = new Event('filter');
+        $blogPosts->beforeFilter($event);
+    }
+
+    /**
+     * test beforeFilter
+     */
+    public function testBeforeFilter_non_numeric_id()
+    {
+        //数字以外の ID を指定した場合。
+        $this->expectException(NotFoundException::class);
+        $request = $this->getRequest('/baser/admin/bc-blog/blog_posts/index/1abc');
         $request = $this->loginAdmin($request);
         $blogPosts = new BlogPostsController($request);
 
@@ -145,6 +161,12 @@ class BlogPostsControllerTest extends BcTestCase
         $this->assertResponseCode(302);
         // リダイレクトを確認
         $this->assertRedirect(['action' => 'index', 2]);
+
+        // ブログの ID がない場合、存在しないブログの場合は 404
+        $this->get('/baser/admin/bc-blog/blog_posts/');
+        $this->assertResponseCode(404);
+        $this->get('/baser/admin/bc-blog/blog_posts/index/1111');
+        $this->assertResponseCode(404);
     }
 
     /**
@@ -448,6 +470,14 @@ class BlogPostsControllerTest extends BcTestCase
 
         //実行失敗のテスト　BlogPostコンテンツ準備足りないのを利用
         $this->post('/baser/admin/bc-blog/blog_posts/copy/1/2');
+        $this->assertResponseCode(404);
+
+        // 数字以外の ID を指定した場合は 404
+        $this->post("/baser/admin/bc-blog/blog_posts/copy/1/1'");
+        $this->assertResponseCode(404);
+        $this->post("/baser/admin/bc-blog/blog_posts/publish/1/abs(1)");
+        $this->assertResponseCode(404);
+        $this->post("/baser/admin/bc-blog/blog_posts/unpublish/1'/1");
         $this->assertResponseCode(404);
     }
 

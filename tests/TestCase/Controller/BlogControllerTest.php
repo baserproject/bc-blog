@@ -139,6 +139,42 @@ class BlogControllerTest extends BcTestCase
     }
 
     /**
+     * test index - RSS の item に RSS に無い要素（convertEntities）を出力しない
+     */
+    public function test_index_rss()
+    {
+        $this->loadFixtureScenario(InitAppScenario::class);
+        ContentFactory::make([
+            'id' => 1,
+            'url' => '/news/',
+            'name' => 'news',
+            'site_id' => 1,
+            'status' => true,
+            'entity_id' => 1,
+            'plugin' => 'BcBlog',
+            'type' => 'BlogContent',
+            'lft' => '1',
+            'rght' => '2',
+            'layout_template' => 'default',
+        ])->persist();
+        BlogContentFactory::make(['id' => 1, 'list_direction' => 'DESC', 'template' => 'default'])->persist();
+        BlogPostFactory::make([
+            'id' => 1,
+            'blog_content_id' => 1,
+            'no' => 1,
+            'user_id' => 1,
+            'name' => 'post1',
+            'title' => 'post1',
+            'posted' => '2023-01-11 12:57:59',
+            'status' => true])->persist();
+
+        $this->get('/news/index.rss');
+        $this->assertResponseOk();
+        $this->assertResponseContains('<item>');
+        $this->assertResponseNotContains('convertEntities');
+    }
+
+    /**
      * test archives
      */
     public function test_archives()
@@ -220,6 +256,62 @@ class BlogControllerTest extends BcTestCase
         $vars = $this->_controller->viewBuilder()->getVars();
         $this->assertEquals('yearly', $vars['blogArchiveType']);
         $this->assertEquals('post1', $vars['posts']->toArray()[0]->name);
+        // 年月日として解釈できない値は 404
+        $this->get('/news/archives/date/2023/' . urlencode("1'"));
+        $this->assertResponseCode(404);
+        $this->get('/news/archives/date/2023/1/' . urlencode("1'"));
+        $this->assertResponseCode(404);
+    }
+
+    /**
+     * 未認証のフロントアクセスで preview / status により非公開記事が閲覧できないことを検証する
+     * （JVN未報告・preview/status 情報漏洩対策）
+     */
+    public function test_preview_status_disclosure_unauthenticated()
+    {
+        $this->loadFixtureScenario(InitAppScenario::class);
+        ContentFactory::make([
+            'id' => 1,
+            'url' => '/news/',
+            'site_id' => 1,
+            'status' => true,
+            'entity_id' => 1,
+            'plugin' => 'BcBlog',
+            'type' => 'BlogContent',
+            'lft' => 1,
+            'rght' => 2,
+            'publish_begin' => '2020-01-27 12:00:00',
+            'layout_template' => 'default',
+            'publish_end' => '9000-01-27 12:00:00'
+        ])->persist();
+        BlogContentFactory::make(['id' => 1, 'list_direction' => 'DESC', 'template' => 'default'])->persist();
+        // 公開記事（no=1）
+        BlogPostFactory::make([
+            'id' => 1, 'blog_content_id' => 1, 'no' => 1, 'user_id' => 1,
+            'name' => 'public-post', 'title' => '公開記事',
+            'posted' => '2023-01-11 12:57:59', 'status' => true
+        ])->persist();
+        // 非公開記事（no=2）
+        BlogPostFactory::make([
+            'id' => 2, 'blog_content_id' => 1, 'no' => 2, 'user_id' => 1,
+            'name' => 'secret-post', 'title' => '非公開記事',
+            'posted' => '2023-01-12 12:57:59', 'status' => false
+        ])->persist();
+
+        // 未認証で非公開記事を preview 指定しても閲覧できない（404）
+        $this->get('/news/archives/2?preview=1');
+        $this->assertResponseCode(404);
+
+        // amp; プレフィックスによる正規化（__cleanupQueryParams）を悪用したバイパスも塞ぐ（404）
+        $this->get('/news/archives/2?amp;preview=1');
+        $this->assertResponseCode(404);
+
+        // 未認証で status=0（非公開のみ列挙）を指定しても非公開記事は返らない
+        $this->get('/news/archives/date/2023?status=0');
+        $vars = $this->_controller->viewBuilder()->getVars();
+        $names = array_map(fn($post) => $post->name, $vars['posts']->toArray());
+        $this->assertNotContains('secret-post', $names);
+        $this->assertContains('public-post', $names);
     }
 
     /**
@@ -401,7 +493,15 @@ class BlogControllerTest extends BcTestCase
                 'message'=>'message test'
             ]);
         $this->assertResponseCode(404);
-
+        // 未指定・数字以外の ID は 400
+        foreach ([['blog_post_id' => 1], ['blog_content_id' => "1'", 'blog_post_id' => 1], ['blog_content_id' => 1, 'blog_post_id' => 'abc']] as $data) {
+            $this->post('/bc-blog/blog/ajax_add_comment', array_merge($data, [
+                'name' => 'name test',
+                'email' => 'test@gmail.com',
+                'message' => 'message test'
+            ]));
+            $this->assertResponseCode(400);
+        }
     }
 
     /**

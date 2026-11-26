@@ -62,8 +62,7 @@ class BlogContentsController extends BcAdminApiController
             $this->setResponse($this->response->withStatus(404));
             $message = __d('baser_core', 'データが見つかりません。');
         } catch (\Throwable $e) {
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
-            $this->setResponse($this->response->withStatus(500));
+            $message = $this->handleThrowable($e);
         }
         $this->set([
             'blogContent' => $blogContent,
@@ -107,8 +106,7 @@ class BlogContentsController extends BcAdminApiController
             $errors = $e->getEntity()->getErrors();
             $message = __d('baser_core', '入力エラーです。内容を修正してください。');
         } catch (\Throwable $e) {
-            $this->setResponse($this->response->withStatus(500));
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
+            $message = $this->handleThrowable($e);
         }
         $this->set([
             'blogContent' => $blogContent,
@@ -144,8 +142,7 @@ class BlogContentsController extends BcAdminApiController
             $this->setResponse($this->response->withStatus(404));
             $message = __d('baser_core', 'データが見つかりません。');
         } catch (\Throwable $e) {
-            $this->setResponse($this->response->withStatus(500));
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
+            $message = $this->handleThrowable($e);
         }
         $this->set([
             'message' => $message,
@@ -181,8 +178,7 @@ class BlogContentsController extends BcAdminApiController
             $this->setResponse($this->response->withStatus(500));
             $message = __d('baser_core', 'データベース処理中にエラーが発生しました。');
         } catch (\Throwable $e) {
-            $this->setResponse($this->response->withStatus(500));
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
+            $message = $this->handleThrowable($e);
         }
         $this->set([
             'message' => $message,
@@ -203,6 +199,10 @@ class BlogContentsController extends BcAdminApiController
         $this->request->allowMethod(['post', 'put', 'patch']);
         $blogContent = $content = null;
         try {
+            $this->getIntegerData('entity_id');
+            $this->getIntegerData('parent_id');
+            $this->getIntegerData('site_id', false);
+            $this->assertScalarData('title');
             $blogContent = $service->copy($this->request->getData());
             if (!$blogContent) {
                 $this->setResponse($this->response->withStatus(400));
@@ -217,8 +217,7 @@ class BlogContentsController extends BcAdminApiController
             $this->setResponse($this->response->withStatus(404));
             $message = __d('baser_core', 'データが見つかりません。');
         } catch (\Throwable $e) {
-            $this->setResponse($this->response->withStatus(500));
-            $message = __d('baser_core', 'データベース処理中にエラーが発生しました。') . $e->getMessage();
+            $message = $this->handleThrowable($e);
         }
         $this->set([
             'message' => $message,

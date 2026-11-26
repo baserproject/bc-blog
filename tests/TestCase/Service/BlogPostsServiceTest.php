@@ -948,10 +948,11 @@ class BlogPostsServiceTest extends BcTestCase
         // 存在しない処理を指定した場合は false を返すこと
         $this->assertFalse($this->BlogPostsService->batch('test', [1, 2, 3]));
 
-        // 存在しない id を指定された場合は例外が発生すること
+        // 存在しない id を指定された場合は飛ばして true を返すこと
         // サービスメソッドを呼ぶ
-        $this->expectException('Cake\Datasource\Exception\RecordNotFoundException');
-        $this->BlogPostsService->batch('delete', [1, 2, 3]);
+        $this->assertTrue($this->BlogPostsService->batch('delete', [1, 2, 3]));
+        // 数字以外の値が含まれていても飛ばして true を返すこと
+        $this->assertTrue($this->BlogPostsService->batch('delete', ['invalid id']));
     }
 
     /**
@@ -1208,6 +1209,42 @@ class BlogPostsServiceTest extends BcTestCase
         //第３引き数が true の場合
         $rs = $this->BlogPostsService->getUrl(ContentFactory::get(100), BlogPostFactory::get(1), true);
         $this->assertEquals('https://localhost/archives/1', $rs);
+    }
+
+    /**
+     * test getIndex
+     * 数字以外のユーザーID・タグID・カテゴリIDは条件にしない
+     */
+    public function testGetIndex_non_numeric_id()
+    {
+        BlogPostFactory::make(['id' => 1, 'blog_content_id' => 1, 'user_id' => 1, 'blog_category_id' => 1])->persist();
+        BlogPostFactory::make(['id' => 2, 'blog_content_id' => 1, 'user_id' => 2, 'blog_category_id' => 2])->persist();
+        $this->assertEquals(2, $this->BlogPostsService->getIndex([
+            'user_id' => "1'",
+            'blog_tag_id' => "1'",
+            'blog_category_id' => "1'",
+        ])->count());
+        // 配列形式も条件にしない
+        $this->assertEquals(2, $this->BlogPostsService->getIndex([
+            'user_id' => [1],
+            'blog_tag_id' => [1],
+            'blog_category_id' => [1],
+        ])->count());
+    }
+
+    /**
+     * test filterBlogTagIds
+     */
+    public function test_filterBlogTagIds()
+    {
+        // 数字以外のタグ ID は取り除く
+        $rs = $this->BlogPostsService->filterBlogTagIds(['blog_tags' => ['_ids' => [1, '2', "3'", 'abs(4)', [5]]]]);
+        $this->assertEquals([1, '2'], $rs['blog_tags']['_ids']);
+        // 配列でない場合は空にする
+        $rs = $this->BlogPostsService->filterBlogTagIds(['blog_tags' => ['_ids' => '']]);
+        $this->assertEquals([], $rs['blog_tags']['_ids']);
+        // 指定がない場合はそのまま
+        $this->assertEquals(['title' => 'a'], $this->BlogPostsService->filterBlogTagIds(['title' => 'a']));
     }
 
 }
